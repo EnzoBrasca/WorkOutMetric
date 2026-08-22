@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Environment / secrets — never commit these
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p8
+*.p12
+*.jks
+*.mobileprovision
+
+# Build output
+dist/
+build/
+web-build/
+*.tsbuildinfo
+
+# Vercel
+.vercel/
+
+# Expo
+.expo/
+expo-env.d.ts
+.metro-health-check*
+
+# Generated native folders
+metric-lab-mobile/ios/
+metric-lab-mobile/android/
+
+# Editor / OS
+.DS_Store
+*.orig.*
+
+# Logs
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Local tooling caches
+.atl/.skill-registry.cache.json
