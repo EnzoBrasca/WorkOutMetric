@@ -14,17 +14,27 @@ export async function deleteExercise(db: SupabaseClient, userId: string, id: str
 
 export async function syncExercises(db: SupabaseClient, userId: string, exercises: any[]) {
   // Map frontend data to Supabase schema
-  const toUpsert = exercises.map((ex: any) => ({
-    id: ex.id && ex.id.length === 36 ? ex.id : undefined, // only use valid UUIDs
-    user_id: userId,
-    name: ex.name,
-    muscle_group: ex.type || 'PULL', // Map frontend 'type' to muscle_group
-    base_weight: 0, // Optional default
-    sets: ex.sets,
-    week: ex.week,
-    weight: ex.weight,
-  }));
+  const toUpsert = exercises.map((ex: any) => {
+    const row: Record<string, unknown> = {
+      user_id: userId,
+      name: ex.name,
+      muscle_group: ex.type || 'PULL', // Map frontend 'type' to muscle_group
+      base_weight: 0, // Optional default
+      sets: ex.sets,
+      week: ex.week,
+      weight: ex.weight,
+    };
 
-  // In Supabase, upserting without an ID auto-generates one.
+    // Only set `id` when the client sent a real UUID. Assigning `undefined`
+    // here is not the same as omitting the key: postgrest-js normalises the
+    // column set across rows and sends an explicit null, which fails the
+    // NOT NULL primary key instead of falling back to gen_random_uuid().
+    if (ex.id && ex.id.length === 36) {
+      row.id = ex.id;
+    }
+
+    return row;
+  });
+
   return exercisesRepository.upsertMany(db, toUpsert);
 }
