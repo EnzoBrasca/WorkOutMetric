@@ -14,7 +14,12 @@ export function useDataScreen() {
     }, [loadStats])
   );
 
-  const compounds = lifts1rm.filter(l => l.type === 'COMPOUND');
+  // Every lift, not a subset. This used to filter `type === 'COMPOUND'`, which
+  // only ever matched because statsService hardcoded that string for every
+  // exercise. Now that `type` carries the real push/pull tag the filter matched
+  // nothing and the comparison section rendered empty — and there is no
+  // compound/isolation distinction in the data to filter on anyway.
+  const compounds = lifts1rm;
   const maxLift = Math.max(...lifts1rm.map(l => Number(l.value)), 1);
 
   // Radar Chart calculations

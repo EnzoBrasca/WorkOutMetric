@@ -6,7 +6,7 @@ import { useTheme } from '../theme/useTheme';
 
 import PushPullTabs from '../components/molecules/PushPullTabs';
 import ExerciseCard from '../components/molecules/ExerciseCard';
-import ExerciseModal from '../components/organisms/ExerciseModal';
+import RoutineExerciseModal from '../components/organisms/RoutineExerciseModal';
 import SessionModal from '../components/organisms/SessionModal';
 import MesocyclePanel from '../components/organisms/MesocyclePanel';
 import MesocycleModal from '../components/organisms/MesocycleModal';
@@ -25,7 +25,9 @@ export default function TrainScreen() {
     setActiveTab,
     exercises,
     isLoading,
-    removeExercise,
+    hasRoutineForTab,
+    handleCreateRoutineForTab,
+    catalogOptionsForAdd,
 
     modalVisible,
     editingExercise,
@@ -33,6 +35,7 @@ export default function TrainScreen() {
     handleOpenEdit,
     handleCloseModal,
     handleSave,
+    handleRemoveFromRoutine,
 
     sessionModalVisible,
     sessionExercise,
@@ -48,6 +51,7 @@ export default function TrainScreen() {
     isPlanLoading,
     isSettingOneRm,
     isMesocycleSaving,
+    isSavingRoutine,
     routines,
     mesocycleModalVisible,
     mesocycleListVisible,
@@ -99,52 +103,67 @@ export default function TrainScreen() {
 
         <PushPullTabs activeTab={activeTab} onTabSelect={setActiveTab} />
 
-        {(() => {
-          const visible = exercises.filter((ex) => ex.type === activeTab);
-          const state = {
-            isLoading,
-            error: mesocycleError,
-            isEmpty: !isLoading && visible.length === 0,
-          };
+        {!hasRoutineForTab && !isLoading ? (
+          <View style={styles.noRoutineBox}>
+            <Text style={styles.noRoutineText}>{t('NO_ROUTINE_FOR_TAB')}</Text>
+            <TouchableOpacity
+              style={styles.createRoutineBtn}
+              onPress={handleCreateRoutineForTab}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.createRoutineText}>{t('CREATE_ROUTINE')}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            {(() => {
+              const state = {
+                isLoading,
+                error: mesocycleError,
+                isEmpty: !isLoading && exercises.length === 0,
+              };
 
-          return shouldRenderState(state) ? (
-            <AsyncState
-              {...state}
-              errorLabel={t('ERROR_LOADING_EXERCISES')}
-              emptyLabel={t('EMPTY_EXERCISES')}
-            />
-          ) : (
-            <View style={styles.exerciseList}>
-              {visible.map((ex) => (
-                <ExerciseCard
-                  key={ex.id}
-                  exercise={ex}
-                  onEdit={handleOpenEdit}
-                  onDelete={removeExercise}
-                  onStart={handleOpenSession}
-                  onSetOneRm={handleSetOneRm}
-                  isSettingOneRm={isSettingOneRm}
+              return shouldRenderState(state) ? (
+                <AsyncState
+                  {...state}
+                  errorLabel={t('ERROR_LOADING_EXERCISES')}
+                  emptyLabel={t('EMPTY_EXERCISES')}
                 />
-              ))}
-            </View>
-          );
-        })()}
+              ) : (
+                <View style={styles.exerciseList}>
+                  {exercises.map((ex) => (
+                    <ExerciseCard
+                      key={ex.id}
+                      exercise={ex}
+                      onEdit={handleOpenEdit}
+                      onDelete={handleRemoveFromRoutine}
+                      onStart={handleOpenSession}
+                      onSetOneRm={handleSetOneRm}
+                      isSettingOneRm={isSettingOneRm}
+                    />
+                  ))}
+                </View>
+              );
+            })()}
 
-        <TouchableOpacity style={styles.addExerciseBtn} onPress={handleOpenAdd} activeOpacity={0.8}>
-          <Svg width="14" height="14" viewBox="0 0 14 14" fill={colors.primary}>
-            <Path d="M 6 8 L 0 8 L 0 6 L 6 6 L 6 0 L 8 0 L 8 6 L 14 6 L 14 8 L 8 8 L 8 14 L 6 14 L 6 8 L 6 8" />
-          </Svg>
-          <Text style={styles.addExerciseText}>{t("ADD_EXERCISE")}</Text>
-        </TouchableOpacity>
+            <TouchableOpacity style={styles.addExerciseBtn} onPress={handleOpenAdd} activeOpacity={0.8}>
+              <Svg width="14" height="14" viewBox="0 0 14 14" fill={colors.primary}>
+                <Path d="M 6 8 L 0 8 L 0 6 L 6 6 L 6 0 L 8 0 L 8 6 L 14 6 L 14 8 L 8 8 L 8 14 L 6 14 L 6 8 L 6 8" />
+              </Svg>
+              <Text style={styles.addExerciseText}>{t("ADD_EXERCISE")}</Text>
+            </TouchableOpacity>
+          </>
+        )}
 
       </ScrollView>
 
-      <ExerciseModal
+      <RoutineExerciseModal
         visible={modalVisible}
         onClose={handleCloseModal}
         onSave={handleSave}
         initialData={editingExercise}
-        routines={routines}
+        catalogOptions={catalogOptionsForAdd}
+        isSaving={isSavingRoutine}
       />
 
       <SessionModal
@@ -206,5 +225,32 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     fontSize: 20,
     letterSpacing: 2,
     color: colors.primary,
+  },
+  noRoutineBox: {
+    borderWidth: 1,
+    borderColor: colors.borderAlt,
+    backgroundColor: colors.backgroundAlt,
+    padding: 24,
+    alignItems: 'center',
+    gap: 16,
+  },
+  noRoutineText: {
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  createRoutineBtn: {
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  createRoutineText: {
+    fontFamily: fonts.medium,
+    fontSize: 12,
+    letterSpacing: 1.2,
+    color: colors.textDark,
   },
 });

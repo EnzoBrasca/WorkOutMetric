@@ -4,11 +4,20 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 
 import { useTheme } from '../theme/useTheme';
 import { useConfigScreen } from '../hooks/useConfigScreen';
 import AsyncState, { shouldRenderState } from '../components/molecules/AsyncState';
+import PushPullTabs from '../components/molecules/PushPullTabs';
+import Button from '../components/atoms/Button';
 
 // Was a hardcoded "04.2024" rendered as if it were live.
 function currentMonthLabel() {
   const now = new Date();
   return `${String(now.getMonth() + 1).padStart(2, '0')}.${now.getFullYear()}`;
+}
+
+function typeLabel(t, type) {
+  const normalized = String(type ?? '').toLowerCase();
+  if (normalized === 'push') return t('PUSH');
+  if (normalized === 'pull') return t('PULL');
+  return type || '—';
 }
 
 export default function ConfigScreen() {
@@ -17,21 +26,43 @@ export default function ConfigScreen() {
   const styles = getStyles(colors, fonts);
   const {
     localLifts,
-    liftErrors,
-    canSave,
     isLoading,
     error,
     isEmpty,
-    handleUpdateLift,
-    handleReset,
-    handleSaveConfig,
     handleRetry,
+
+    newExerciseName,
+    newExerciseType,
+    createError,
+    isCreatingExercise,
+    handleChangeNewExerciseName,
+    handleChangeNewExerciseType,
+    handleCreateExercise,
+
+    editingId,
+    renameValue,
+    handleChangeRenameValue,
+    handleStartRename,
+    handleCancelRename,
+    handleConfirmRename,
+
+    pendingDeleteId,
+    handleDeleteExercise,
+
+    rowInputs,
+    rowErrors,
+    estimatingIds,
+    lowConfidenceByExerciseId,
+    handleChangeRowWeight,
+    handleChangeRowReps,
+    handleSubmitOneRm,
+
     localRestTimerSeconds,
     restTimerError,
     handleChangeRestTimerSeconds,
   } = useConfigScreen();
 
-  const liftsState = { isLoading, error, isEmpty };
+  const catalogState = { isLoading, error, isEmpty };
 
   return (
     <View style={styles.container}>
@@ -45,54 +76,158 @@ export default function ConfigScreen() {
 
         <View style={styles.configSection}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{t("ONE_RM_UPLOAD")}</Text>
+            <Text style={styles.sectionTitle}>{t("EXERCISE_CATALOG")}</Text>
           </View>
 
-          {shouldRenderState(liftsState) ? (
+          <View style={styles.newExerciseBox}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>{t("EXERCISE_NAME")}</Text>
+              <TextInput
+                style={styles.input}
+                value={newExerciseName}
+                onChangeText={handleChangeNewExerciseName}
+                placeholder={t("NEW_EXERCISE_NAME_PLACEHOLDER")}
+                placeholderTextColor={colors.textSecondary}
+              />
+              {createError ? <Text style={styles.fieldError}>{t(createError)}</Text> : null}
+            </View>
+            <PushPullTabs activeTab={newExerciseType} onTabSelect={handleChangeNewExerciseType} />
+            <Button
+              label={t("CREATE")}
+              onPress={handleCreateExercise}
+              variant="primary"
+              loading={isCreatingExercise}
+            />
+          </View>
+
+          {shouldRenderState(catalogState) ? (
             <AsyncState
-              {...liftsState}
+              {...catalogState}
               errorLabel={t('ERROR_LOADING_STATS')}
               emptyLabel={t('EMPTY_LIFTS')}
               onRetry={handleRetry}
             />
           ) : (
-            <>
-              <View style={styles.liftsList}>
-                {localLifts.map((l) => (
-                  <View key={l.id} style={styles.liftRow}>
-                    <View style={styles.liftInfo}>
-                      <Text style={styles.liftType}>{l.type}</Text>
-                      <Text style={styles.liftName}>{l.name}</Text>
-                      {liftErrors[l.id] ? (
-                        <Text style={styles.fieldError}>{t(liftErrors[l.id])}</Text>
+            <View style={styles.liftsList}>
+              {localLifts.map((lift) => {
+                const isEditingName = editingId === lift.id;
+                const isPendingDelete = pendingDeleteId === lift.id;
+                const rowInput = rowInputs[lift.id] || {};
+                const rowError = rowErrors[lift.id] || {};
+                const isEstimating = Boolean(estimatingIds[lift.id]);
+                const isLowConfidence = Boolean(lowConfidenceByExerciseId[lift.id]);
+
+                return (
+                  <View key={lift.id} style={styles.liftCard}>
+                    <View style={styles.liftHeaderRow}>
+                      <View style={styles.liftNameGroup}>
+                        {isEditingName ? (
+                          <TextInput
+                            style={styles.renameInput}
+                            value={renameValue}
+                            onChangeText={handleChangeRenameValue}
+                            autoFocus
+                          />
+                        ) : (
+                          <Text style={styles.liftName}>{lift.name}</Text>
+                        )}
+                        <Text style={styles.liftType}>{typeLabel(t, lift.type)}</Text>
+                      </View>
+                      <View style={styles.liftActions}>
+                        {isEditingName ? (
+                          <>
+                            <TouchableOpacity onPress={handleConfirmRename}>
+                              <Text style={styles.actionText}>{t('SAVE')}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={handleCancelRename}>
+                              <Text style={styles.actionText}>{t('CANCEL')}</Text>
+                            </TouchableOpacity>
+                          </>
+                        ) : (
+                          <TouchableOpacity onPress={() => handleStartRename(lift)}>
+                            <Text style={styles.actionText}>{t('RENAME')}</Text>
+                          </TouchableOpacity>
+                        )}
+                        <TouchableOpacity onPress={() => handleDeleteExercise(lift.id)}>
+                          <Text style={[styles.actionText, { color: colors.danger }]}>
+                            {isPendingDelete ? t('CONFIRM') : t('DEL')}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    {isPendingDelete ? (
+                      <Text style={styles.confirmText}>{t('CONFIRM_DELETE_EXERCISE_BODY')}</Text>
+                    ) : null}
+
+                    <View style={styles.oneRmInfoRow}>
+                      <View>
+                        <Text style={styles.infoRowLabel}>{t('REFERENCE_ONE_RM')}</Text>
+                        <View style={styles.oneRmValueRow}>
+                          <Text style={styles.oneRmValue}>
+                            {lift.oneRm != null ? lift.oneRm : '—'}
+                          </Text>
+                          <Text style={styles.inlineUnit}>{t('KG')}</Text>
+                          {lift.isManual ? (
+                            <Text style={styles.manualBadge}>{t('MANUAL_BADGE')}</Text>
+                          ) : null}
+                        </View>
+                      </View>
+                      {lift.historyValue != null ? (
+                        <View>
+                          <Text style={styles.infoRowLabel}>{t('BEST_SET')}</Text>
+                          <Text style={styles.historyValue}>
+                            {lift.historyValue}{t('KG')}
+                          </Text>
+                        </View>
                       ) : null}
                     </View>
-                    <View style={styles.liftValueBox}>
-                      <TextInput
-                        style={styles.liftInput}
-                        value={l.value.toString()}
-                        onChangeText={(text) => handleUpdateLift(l.id, text)}
-                        keyboardType="numeric"
-                      />
-                      <Text style={styles.liftUnit}>{t("KG")}</Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
 
-              <View style={styles.actionsRow}>
-                <TouchableOpacity style={styles.resetBtn} onPress={handleReset}>
-                  <Text style={styles.resetBtnText}>{t("RESET")}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.saveBtn, !canSave && styles.saveBtnDisabled]}
-                  onPress={handleSaveConfig}
-                  disabled={!canSave}
-                >
-                  <Text style={styles.saveBtnText}>{t("SAVE_CONFIG")}</Text>
-                </TouchableOpacity>
-              </View>
-            </>
+                    <View style={styles.setRow}>
+                      <View style={styles.setInputGroup}>
+                        <TextInput
+                          style={styles.setInput}
+                          value={rowInput.weight || ''}
+                          onChangeText={(text) => handleChangeRowWeight(lift.id, text)}
+                          keyboardType="numeric"
+                          placeholder={t('WEIGHT')}
+                          placeholderTextColor={colors.textSecondary}
+                        />
+                        {rowError.weight ? (
+                          <Text style={styles.fieldError}>{t(rowError.weight)}</Text>
+                        ) : null}
+                      </View>
+                      <Text style={styles.setSeparator}>×</Text>
+                      <View style={styles.setInputGroup}>
+                        <TextInput
+                          style={styles.setInput}
+                          value={rowInput.reps || ''}
+                          onChangeText={(text) => handleChangeRowReps(lift.id, text)}
+                          keyboardType="numeric"
+                          placeholder={t('REPS')}
+                          placeholderTextColor={colors.textSecondary}
+                        />
+                        {rowError.reps ? (
+                          <Text style={styles.fieldError}>{t(rowError.reps)}</Text>
+                        ) : null}
+                      </View>
+                      <Button
+                        label={t('CALCULATE_ONE_RM')}
+                        onPress={() => handleSubmitOneRm(lift.id)}
+                        variant="primary"
+                        loading={isEstimating}
+                        style={styles.calculateBtn}
+                      />
+                    </View>
+                    {rowError.submit ? (
+                      <Text style={styles.fieldError}>{t(rowError.submit)}</Text>
+                    ) : null}
+                    {isLowConfidence ? (
+                      <Text style={styles.lowConfidenceText}>{t('LOW_CONFIDENCE_WARNING')}</Text>
+                    ) : null}
+                  </View>
+                );
+              })}
+            </View>
           )}
         </View>
 
@@ -170,8 +305,159 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     fontSize: 20,
     color: colors.primary,
   },
+  newExerciseBox: {
+    backgroundColor: colors.backgroundAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
+    gap: 12,
+  },
+  inputGroup: {
+    gap: 8,
+  },
+  label: {
+    fontFamily: fonts.medium,
+    fontSize: 12,
+    color: colors.textSecondary,
+    letterSpacing: 1,
+  },
+  input: {
+    fontFamily: fonts.regular,
+    fontSize: 16,
+    color: colors.textPrimary,
+    borderWidth: 1,
+    borderColor: colors.borderAlt,
+    backgroundColor: colors.background,
+    padding: 12,
+  },
   liftsList: {
+    gap: 12,
+  },
+  liftCard: {
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.borderAlt,
+    padding: 16,
+    gap: 12,
+  },
+  liftHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  liftNameGroup: {
+    flex: 1,
     gap: 4,
+  },
+  liftName: {
+    fontFamily: fonts.semiBold,
+    fontSize: 18,
+    color: colors.textPrimary,
+  },
+  renameInput: {
+    fontFamily: fonts.semiBold,
+    fontSize: 18,
+    color: colors.textPrimary,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.background,
+    padding: 8,
+  },
+  liftType: {
+    fontFamily: fonts.medium,
+    fontSize: 12,
+    color: colors.textSecondary,
+    letterSpacing: 0.6,
+  },
+  liftActions: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
+  actionText: {
+    fontFamily: fonts.semiBold,
+    fontSize: 12,
+    letterSpacing: 0.6,
+    color: colors.textSecondary,
+    textDecorationLine: 'underline',
+  },
+  confirmText: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    color: colors.danger,
+  },
+  oneRmInfoRow: {
+    flexDirection: 'row',
+    gap: 32,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.borderLight,
+    paddingVertical: 12,
+  },
+  infoRowLabel: {
+    fontFamily: fonts.medium,
+    fontSize: 11,
+    letterSpacing: 0.6,
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  oneRmValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  oneRmValue: {
+    fontFamily: fonts.bold,
+    fontSize: 28,
+    color: colors.primary,
+  },
+  manualBadge: {
+    fontFamily: fonts.medium,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    color: colors.primaryLight,
+    borderWidth: 1,
+    borderColor: colors.borderAlt,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  historyValue: {
+    fontFamily: fonts.medium,
+    fontSize: 18,
+    color: colors.textSecondary,
+  },
+  setRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'flex-start',
+  },
+  setInputGroup: {
+    flex: 1,
+  },
+  setInput: {
+    fontFamily: fonts.regular,
+    fontSize: 16,
+    color: colors.textPrimary,
+    borderWidth: 1,
+    borderColor: colors.borderAlt,
+    backgroundColor: colors.background,
+    padding: 10,
+    textAlign: 'center',
+  },
+  setSeparator: {
+    fontFamily: fonts.medium,
+    fontSize: 16,
+    color: colors.textSecondary,
+    marginTop: 10,
+  },
+  calculateBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  lowConfidenceText: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    color: colors.danger,
   },
   liftRow: {
     backgroundColor: colors.background,
@@ -184,16 +470,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
   },
   liftInfo: {
     gap: 4,
-  },
-  liftType: {
-    fontFamily: fonts.medium,
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  liftName: {
-    fontFamily: fonts.regular,
-    fontSize: 16,
-    color: colors.textPrimary,
   },
   liftValueBox: {
     width: 96,
@@ -223,42 +499,11 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     right: 8,
     bottom: 8,
   },
-  actionsRow: {
-    flexDirection: 'row',
-    gap: 16,
-    justifyContent: 'flex-end',
-    paddingVertical: 8,
-  },
-  resetBtn: {
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  resetBtnText: {
-    fontFamily: fonts.medium,
-    fontSize: 12,
-    letterSpacing: 1.2,
-    color: colors.textPrimary,
-  },
-  saveBtn: {
-    backgroundColor: colors.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveBtnDisabled: {
-    opacity: 0.4,
-  },
-  saveBtnText: {
-    fontFamily: fonts.medium,
-    fontSize: 12,
-    letterSpacing: 1.2,
-    color: colors.textDark,
+  inlineUnit: {
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 4,
   },
   fieldError: {
     fontFamily: fonts.regular,

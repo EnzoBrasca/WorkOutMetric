@@ -67,11 +67,16 @@ export const useWorkoutStore = create(
       // its id AND need the row to exist server-side before anything can
       // reference it — routine_exercises.exercise_id is a foreign key, so
       // adding routine membership too early fails.
-      addExercise: async (exerciseData) => {
+      //
+      // `type` is explicit because callers now include the exercise catalog
+      // (Config screen), which has no "current tab" to infer a type from.
+      // Falls back to activeTab so any caller that omits it keeps the exact
+      // behaviour this had before the catalog existed.
+      addExercise: async (exerciseData, type) => {
         const exercise = {
           id: uuid.v4(),
           ...exerciseData,
-          type: get().activeTab,
+          type: type ?? get().activeTab,
         };
 
         set((state) => ({ exercises: [...state.exercises, exercise] }));

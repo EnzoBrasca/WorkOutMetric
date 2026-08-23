@@ -12,6 +12,11 @@ export const useMesocycleStore = create(
       activeMesocycleId: null,
       routines: [],
 
+      // The Train tab's resolved routine, with its exercise membership
+      // (routine_exercises, each carrying the nested `exercises` row). Null
+      // when the tab has no matching routine yet — see loadRoutineForTab.
+      activeRoutineDetail: null,
+
       // Calculated targets for the active mesocycle's current week. Never
       // stored on the backend, so this is always just a cache of the last
       // successful /mesocycles?resource=plan response.
@@ -21,6 +26,7 @@ export const useMesocycleStore = create(
       isSavingRoutine: false,
       isPlanLoading: false,
       isSettingOneRm: false,
+      isLoadingRoutineDetail: false,
       error: null,
 
       loadMesocycles: async () => {
@@ -195,6 +201,107 @@ export const useMesocycleStore = create(
           return { success: false, error: error.message };
         } finally {
           set({ isSavingRoutine: false });
+        }
+      },
+
+      /**
+       * Resolves a Train tab ('push'/'pull') to its routine and loads that
+       * routine's exercise membership. The migration that introduced
+       * routines seeded one per user per muscle_group, named
+       * UPPER(muscle_group) — so 'push' resolves to the routine literally
+       * named "PUSH". Returns null (not an error) when no matching routine
+       * exists yet; the caller offers to create one instead of treating
+       * this as a failure.
+       */
+      loadRoutineForTab: async (tab) => {
+        const routineName = String(tab ?? '').toUpperCase();
+        const match = get().routines.find((routine) => routine.name === routineName);
+
+        if (!match) {
+          set({ activeRoutineDetail: null });
+          return null;
+        }
+
+        set({ isLoadingRoutineDetail: true, error: null });
+        try {
+          const { routine } = await routinesApi.getRoutine(match.id);
+          set({ activeRoutineDetail: routine });
+          return routine;
+        } catch (error) {
+          console.error('Failed to load routine detail:', error);
+          set({ error: error.message, activeRoutineDetail: null });
+          return null;
+        } finally {
+          set({ isLoadingRoutineDetail: false });
+        }
+      },
+
+      // Creates the tab's missing routine (e.g. no "PUSH" routine yet for
+      // this user) so "add exercise" has something to attach membership to,
+      // then loads it the same way loadRoutineForTab does so the screen
+      // picks it up immediately instead of requiring another focus/refresh.
+      createRoutineForTab: async (tab) => {
+        const routineName = String(tab ?? '').toUpperCase();
+        set({ isLoading: true, error: null });
+        try {
+          const { routine } = await routinesApi.createRoutine({ name: routineName });
+          set((state) => ({ routines: [...state.routines, routine] }));
+          await get().loadRoutineForTab(tab);
+          return { success: true, routine };
+        } catch (error) {
+          console.error('Failed to create routine:', error);
+          set({ error: error.message });
+          return { success: false, error: error.message };
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      // Adds an existing catalog exercise to a routine — Train's "add
+      // exercise" only ever picks from the catalog now, never creates one —
+      // and refreshes the cached routine detail so the new membership shows
+      // up without waiting for the next focus.
+      addExerciseToRoutine: async (routineId, exerciseId, targetSets, targetReps) => {
+        const result = await get().setExerciseRoutine(routineId, exerciseId, targetSets, targetReps);
+        if (result.success) {
+          try {
+            const { routine } = await routinesApi.getRoutine(routineId);
+            set({ activeRoutineDetail: routine });
+          } catch (error) {
+            console.error('Failed to refresh routine detail:', error);
+          }
+        }
+        return result;
+      },
+
+      /**
+       * Removes an exercise from a routine. This only drops the
+       * routine_exercises row — the catalog exercise itself, and its
+       * membership in any other routine, is untouched. Optimistic with
+       * rollback, the same shape as the rest of this store.
+       */
+      removeExerciseFromRoutine: async (routineId, exerciseId) => {
+        const previousDetail = get().activeRoutineDetail;
+
+        if (previousDetail?.id === routineId) {
+          set({
+            activeRoutineDetail: {
+              ...previousDetail,
+              exercises: previousDetail.exercises.filter((ex) => ex.exercise_id !== exerciseId),
+            },
+          });
+        }
+
+        try {
+          await routinesApi.removeRoutineExercise(routineId, exerciseId);
+          if (get().activeMesocycleId) {
+            await get().refreshPlan();
+          }
+          return { success: true };
+        } catch (error) {
+          console.error('Failed to remove exercise from routine:', error);
+          set({ activeRoutineDetail: previousDetail, error: error.message });
+          return { success: false, error: error.message };
         }
       },
     }),

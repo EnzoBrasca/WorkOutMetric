@@ -10,3 +10,14 @@ export const setOneRm = (exerciseId, oneRm) =>
     method: 'POST',
     body: { exercise_id: exerciseId, one_rm: oneRm },
   });
+
+// Same endpoint, the other accepted shape: estimates the 1RM from a set the
+// user actually did (Epley, server-side) instead of taking the number
+// directly. This is what the exercise catalog (Config screen) uses — entering
+// a set is what marks the resulting 1RM as user-owned (isManual: true) rather
+// than one merely backfilled from logged history.
+export const estimateOneRm = (exerciseId, weight, reps) =>
+  apiRequest('/data/sync?resource=one-rm', {
+    method: 'POST',
+    body: { exercise_id: exerciseId, weight, reps },
+  });

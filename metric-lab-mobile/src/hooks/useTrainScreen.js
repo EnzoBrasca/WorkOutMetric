@@ -1,5 +1,6 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
+import { useTranslation } from '../i18n';
 import { useWorkoutStore } from '../store/useWorkoutStore';
 import { useMesocycleStore } from '../store/useMesocycleStore';
 import { useSessionStore } from '../store/useSessionStore';
@@ -7,7 +8,9 @@ import { useSettingsStore } from '../store/useSettingsStore';
 import { useRestTimer } from './useRestTimer';
 
 export function useTrainScreen() {
-  const { activeTab, setActiveTab, exercises, addExercise, updateExercise, removeExercise, logSession, isLoading } = useWorkoutStore();
+  const t = useTranslation();
+  const { activeTab, setActiveTab, exercises, logSession, isLoading, loadExercises } =
+    useWorkoutStore();
 
   const {
     mesocycles,
@@ -16,16 +19,21 @@ export function useTrainScreen() {
     isPlanLoading,
     isSettingOneRm,
     routines,
+    activeRoutineDetail,
+    isLoadingRoutineDetail,
     isLoading: isMesocycleSaving,
     loadMesocycles,
     loadRoutines,
+    loadRoutineForTab,
+    createRoutineForTab,
     refreshPlan,
     createMesocycle,
     selectActiveMesocycle,
     setCurrentWeek,
     setOneRm,
     deleteMesocycle,
-    setExerciseRoutine,
+    addExerciseToRoutine,
+    removeExerciseFromRoutine,
     isSavingRoutine,
     error: mesocycleError,
   } = useMesocycleStore();
@@ -48,20 +56,35 @@ export function useTrainScreen() {
     [mesocycles, activeMesocycleId]
   );
 
-  // Reload mesocycles/routines and re-fetch the plan every time this screen
-  // gains focus, so a 1RM edited on ConfigScreen (or a week changed from
-  // another device) isn't shown stale. Also re-checks for an in-progress
-  // workout (FRONTEND_TODO 2.6) so one started earlier — or before the app
-  // was killed — is resumed rather than lost.
+  // Reload mesocycles/routines/the catalog and re-fetch the plan every time
+  // this screen gains focus, so a 1RM edited on ConfigScreen (or a week
+  // changed from another device) isn't shown stale. Also re-checks for an
+  // in-progress workout (FRONTEND_TODO 2.6) so one started earlier — or
+  // before the app was killed — is resumed rather than lost.
   useFocusEffect(
     useCallback(() => {
       loadMesocycles();
       loadRoutines();
+      loadExercises();
       refreshActiveSession();
       if (activeMesocycleId) {
         refreshPlan();
       }
-    }, [loadMesocycles, loadRoutines, refreshActiveSession, refreshPlan, activeMesocycleId])
+    }, [loadMesocycles, loadRoutines, loadExercises, refreshActiveSession, refreshPlan, activeMesocycleId])
+  );
+
+  // Resolves the active tab to its routine whenever the tab changes or the
+  // routines list refreshes (e.g. right after creating the missing one).
+  useEffect(() => {
+    loadRoutineForTab(activeTab);
+  }, [activeTab, routines, loadRoutineForTab]);
+
+  const hasRoutineForTab = Boolean(activeRoutineDetail);
+  const routineMembership = activeRoutineDetail?.exercises ?? [];
+
+  const exerciseCatalogById = useMemo(
+    () => Object.fromEntries(exercises.map((ex) => [ex.id, ex])),
+    [exercises]
   );
 
   // Overlays each exercise with its mesocycle-calculated target when one
@@ -76,13 +99,46 @@ export function useTrainScreen() {
     return map;
   }, [plan]);
 
+  // Train shows the ACTIVE ROUTINE's membership, not every catalog exercise
+  // filtered by type. Each row is the catalog exercise (for its free-text
+  // weight/sets fallback — vestigial, but still what SessionModal/ExerciseCard
+  // fall back to without an active mesocycle) plus that membership's target
+  // sets/reps, plus the mesocycle plan target when one covers it.
   const displayExercises = useMemo(
     () =>
-      exercises.map((ex) => {
-        const planTarget = planByExerciseId[ex.id];
-        return planTarget ? { ...ex, planTarget } : ex;
+      routineMembership.map((membership) => {
+        const catalogExercise = exerciseCatalogById[membership.exercise_id];
+        const nested = membership.exercises || {};
+        const base = catalogExercise || {
+          id: membership.exercise_id,
+          name: nested.name || t('UNKNOWN_EXERCISE'),
+          type: nested.muscle_group || activeTab,
+          weight: '0.0',
+          sets: `${membership.target_sets}x${membership.target_reps}`,
+          week: 'WK 1/4',
+        };
+        const planTarget = planByExerciseId[base.id];
+
+        return {
+          ...base,
+          ...(planTarget ? { planTarget } : {}),
+          targetSets: membership.target_sets,
+          targetReps: membership.target_reps,
+        };
       }),
-    [exercises, planByExerciseId]
+    [routineMembership, exerciseCatalogById, planByExerciseId, activeTab, t]
+  );
+
+  // Catalog exercises available to add: same type as the tab, not already a
+  // member of this routine (adding an existing member would just be editing
+  // its target, which the card's own EDIT action already covers).
+  const routineExerciseIds = useMemo(
+    () => new Set(routineMembership.map((membership) => membership.exercise_id)),
+    [routineMembership]
+  );
+  const catalogOptionsForAdd = useMemo(
+    () => exercises.filter((ex) => ex.type === activeTab && !routineExerciseIds.has(ex.id)),
+    [exercises, activeTab, routineExerciseIds]
   );
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -108,25 +164,31 @@ export function useTrainScreen() {
   };
 
   const handleOpenEdit = (exercise) => {
-    setEditingExercise(exercise);
+    setEditingExercise({
+      exerciseId: exercise.id,
+      name: exercise.name,
+      targetSets: exercise.targetSets,
+      targetReps: exercise.targetReps,
+    });
     setModalVisible(true);
   };
 
   const handleCloseModal = () => setModalVisible(false);
 
-  const handleSave = async ({ routineId, targetSets, targetReps, ...exerciseData }) => {
-    if (editingExercise) {
-      updateExercise(editingExercise.id, exerciseData);
-      await setExerciseRoutine(routineId, editingExercise.id, targetSets, targetReps);
-      return;
-    }
-
-    // Awaited in order: routine_exercises.exercise_id is a foreign key, so the
-    // exercise has to exist server-side before it can join a routine. Without
-    // this the new exercise would never receive a mesocycle target.
-    const created = await addExercise(exerciseData);
-    await setExerciseRoutine(routineId, created.id, targetSets, targetReps);
+  // Both add and edit collapse to the same call: setRoutineExercises upserts
+  // on (routine_id, exercise_id), so "add" and "change this exercise's
+  // target" are the same request, just with a different starting point.
+  const handleSave = async ({ exerciseId, targetSets, targetReps }) => {
+    if (!activeRoutineDetail) return;
+    await addExerciseToRoutine(activeRoutineDetail.id, exerciseId, targetSets, targetReps);
   };
+
+  const handleRemoveFromRoutine = (exerciseId) => {
+    if (!activeRoutineDetail) return;
+    removeExerciseFromRoutine(activeRoutineDetail.id, exerciseId);
+  };
+
+  const handleCreateRoutineForTab = () => createRoutineForTab(activeTab);
 
   const handleOpenSession = (exercise) => {
     setSessionExerciseId(exercise.id);
@@ -188,8 +250,10 @@ export function useTrainScreen() {
     activeTab,
     setActiveTab,
     exercises: displayExercises,
-    isLoading,
-    removeExercise,
+    isLoading: isLoading || isLoadingRoutineDetail,
+    hasRoutineForTab,
+    handleCreateRoutineForTab,
+    catalogOptionsForAdd,
 
     modalVisible,
     editingExercise,
@@ -197,6 +261,7 @@ export function useTrainScreen() {
     handleOpenEdit,
     handleCloseModal,
     handleSave,
+    handleRemoveFromRoutine,
 
     sessionModalVisible,
     sessionExercise,
