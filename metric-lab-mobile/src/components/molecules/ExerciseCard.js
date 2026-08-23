@@ -2,11 +2,17 @@ import { useTranslation } from '../../i18n';
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
+import OneRmPrompt from './OneRmPrompt';
 
-export default function ExerciseCard({ exercise, onEdit, onDelete, onStart }) {
+// exercise.planTarget is attached by useTrainScreen when an active mesocycle
+// covers this exercise (see useMesocycleStore's plan). When it's absent this
+// renders exactly as before, so exercises outside a mesocycle — or when no
+// mesocycle is active at all — are unaffected.
+export default function ExerciseCard({ exercise, onEdit, onDelete, onStart, onSetOneRm, isSettingOneRm }) {
   const t = useTranslation();
   const { colors, fonts } = useTheme();
   const styles = getStyles(colors, fonts);
+  const planTarget = exercise.planTarget;
   return (
     <View style={styles.exerciseCard}>
       <View style={styles.cardHeader}>
@@ -32,15 +38,23 @@ export default function ExerciseCard({ exercise, onEdit, onDelete, onStart }) {
         <View style={styles.statCol}>
           <Text style={styles.statLabel}>{t("TARGET_WEIGHT")}</Text>
           <View style={styles.statValueContainer}>
-            <Text style={styles.statValueWeight}>{exercise.weight}</Text>
+            <Text style={styles.statValueWeight}>
+              {planTarget ? (planTarget.needsOneRm ? '—' : planTarget.targetWeight) : exercise.weight}
+            </Text>
             <Text style={styles.statUnit}>{t("KG")}</Text>
           </View>
         </View>
         <View style={styles.statCol}>
           <Text style={styles.statLabel}>{t("SETS_X_REPS")}</Text>
-          <Text style={styles.statValueSets}>{exercise.sets}</Text>
+          <Text style={styles.statValueSets}>
+            {planTarget ? `${planTarget.targetSets}x${planTarget.targetReps}` : exercise.sets}
+          </Text>
         </View>
       </View>
+
+      {planTarget?.needsOneRm && (
+        <OneRmPrompt onSubmit={(value) => onSetOneRm(exercise.id, value)} loading={isSettingOneRm} />
+      )}
     </View>
   );
 }

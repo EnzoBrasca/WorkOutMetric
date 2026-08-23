@@ -7,8 +7,11 @@ export const useSettingsStore = create(
   persist(
     (set, get) => ({
       theme: 'dark', // 'dark', 'light', 'custom'
-      font: 'PixelifySans_400Regular', 
+      font: 'PixelifySans_400Regular',
       language: 'en', // 'en', 'es'
+      // Default rest-timer duration in seconds (FRONTEND_TODO 2.7). Local-only:
+      // it is not part of the `preferences` blob synced via syncPreferences.
+      restTimerSeconds: 90,
       customColors: {
         background: '#09090b',
         primary: '#39ff14',
@@ -27,6 +30,7 @@ export const useSettingsStore = create(
         set({ language });
         get().syncPreferences();
       },
+      setRestTimerSeconds: (restTimerSeconds) => set({ restTimerSeconds }),
       setCustomColor: (key, value) => {
         set((state) => ({ 
           customColors: { ...state.customColors, [key]: value } 

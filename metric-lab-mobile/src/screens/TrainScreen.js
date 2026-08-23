@@ -1,6 +1,6 @@
 import { useTranslation } from '../i18n';
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '../theme/useTheme';
 
@@ -8,6 +8,11 @@ import PushPullTabs from '../components/molecules/PushPullTabs';
 import ExerciseCard from '../components/molecules/ExerciseCard';
 import ExerciseModal from '../components/organisms/ExerciseModal';
 import SessionModal from '../components/organisms/SessionModal';
+import MesocyclePanel from '../components/organisms/MesocyclePanel';
+import MesocycleModal from '../components/organisms/MesocycleModal';
+import MesocycleListModal from '../components/organisms/MesocycleListModal';
+import ActiveSessionBar from '../components/organisms/ActiveSessionBar';
+import AsyncState, { shouldRenderState } from '../components/molecules/AsyncState';
 import { useTrainScreen } from '../hooks/useTrainScreen';
 
 export default function TrainScreen() {
@@ -34,31 +39,96 @@ export default function TrainScreen() {
     handleOpenSession,
     handleCloseSessionModal,
     handleSaveSession,
+
+    activeMesocycle,
+    mesocycles,
+    mesocycleError,
+    activeMesocycleId,
+    plan,
+    isPlanLoading,
+    isSettingOneRm,
+    isMesocycleSaving,
+    routines,
+    mesocycleModalVisible,
+    mesocycleListVisible,
+    handleOpenMesocycleModal,
+    handleCloseMesocycleModal,
+    handleOpenMesocycleList,
+    handleCloseMesocycleList,
+    handleSelectMesocycle,
+    handleDeleteMesocycle,
+    handleCreateFromList,
+    handleCreateMesocycle,
+    handleChangeWeek,
+    handleEndMesocycle,
+    handleSetOneRm,
+
+    activeSummary,
+    isStartingSession,
+    isFinishingSession,
+    handleStartWorkout,
+    handleFinishWorkout,
+    restTimer,
+    restTimerSeconds,
   } = useTrainScreen();
 
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
 
+        <ActiveSessionBar
+          activeSummary={activeSummary}
+          isStarting={isStartingSession}
+          isFinishing={isFinishingSession}
+          onStart={handleStartWorkout}
+          onFinish={handleFinishWorkout}
+          restTimer={restTimer}
+          restDurationSec={restTimerSeconds}
+        />
+
+        <MesocyclePanel
+          activeMesocycle={activeMesocycle}
+          plan={plan}
+          isPlanLoading={isPlanLoading}
+          onStartPress={handleOpenMesocycleModal}
+          onChangeWeek={handleChangeWeek}
+          onEndPress={handleEndMesocycle}
+          onManagePress={handleOpenMesocycleList}
+          hasMesocycles={mesocycles.length > 0}
+        />
+
         <PushPullTabs activeTab={activeTab} onTabSelect={setActiveTab} />
 
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-          </View>
-        ) : (
-          <View style={styles.exerciseList}>
-            {exercises.filter(ex => ex.type === activeTab).map((ex) => (
-              <ExerciseCard
-                key={ex.id}
-                exercise={ex}
-                onEdit={handleOpenEdit}
-                onDelete={removeExercise}
-                onStart={handleOpenSession}
-              />
-            ))}
-          </View>
-        )}
+        {(() => {
+          const visible = exercises.filter((ex) => ex.type === activeTab);
+          const state = {
+            isLoading,
+            error: mesocycleError,
+            isEmpty: !isLoading && visible.length === 0,
+          };
+
+          return shouldRenderState(state) ? (
+            <AsyncState
+              {...state}
+              errorLabel={t('ERROR_LOADING_EXERCISES')}
+              emptyLabel={t('EMPTY_EXERCISES')}
+            />
+          ) : (
+            <View style={styles.exerciseList}>
+              {visible.map((ex) => (
+                <ExerciseCard
+                  key={ex.id}
+                  exercise={ex}
+                  onEdit={handleOpenEdit}
+                  onDelete={removeExercise}
+                  onStart={handleOpenSession}
+                  onSetOneRm={handleSetOneRm}
+                  isSettingOneRm={isSettingOneRm}
+                />
+              ))}
+            </View>
+          );
+        })()}
 
         <TouchableOpacity style={styles.addExerciseBtn} onPress={handleOpenAdd} activeOpacity={0.8}>
           <Svg width="14" height="14" viewBox="0 0 14 14" fill={colors.primary}>
@@ -74,6 +144,7 @@ export default function TrainScreen() {
         onClose={handleCloseModal}
         onSave={handleSave}
         initialData={editingExercise}
+        routines={routines}
       />
 
       <SessionModal
@@ -81,6 +152,28 @@ export default function TrainScreen() {
         onClose={handleCloseSessionModal}
         onSave={handleSaveSession}
         exercise={sessionExercise}
+        onSetOneRm={handleSetOneRm}
+        isSettingOneRm={isSettingOneRm}
+        restTimer={restTimer}
+        restDurationSec={restTimerSeconds}
+      />
+
+      <MesocycleModal
+        visible={mesocycleModalVisible}
+        onClose={handleCloseMesocycleModal}
+        onSave={handleCreateMesocycle}
+        routines={routines}
+        isSaving={isMesocycleSaving}
+      />
+
+      <MesocycleListModal
+        visible={mesocycleListVisible}
+        onClose={handleCloseMesocycleList}
+        mesocycles={mesocycles}
+        activeMesocycleId={activeMesocycleId}
+        onSelect={handleSelectMesocycle}
+        onDelete={handleDeleteMesocycle}
+        onCreatePress={handleCreateFromList}
       />
     </View>
   );
@@ -94,11 +187,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingBottom: 32,
-  },
-  loadingContainer: {
-    paddingVertical: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   exerciseList: {
     gap: 16,

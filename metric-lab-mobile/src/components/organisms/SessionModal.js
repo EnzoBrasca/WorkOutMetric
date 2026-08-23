@@ -3,17 +3,37 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import Button from '../atoms/Button';
+import OneRmPrompt from '../molecules/OneRmPrompt';
+import RestTimer from '../molecules/RestTimer';
 
-export default function SessionModal({ visible, onClose, onSave, exercise }) {
+export default function SessionModal({
+  visible,
+  onClose,
+  onSave,
+  exercise,
+  onSetOneRm,
+  isSettingOneRm,
+  restTimer,
+  restDurationSec,
+}) {
   const t = useTranslation();
   const { colors, fonts } = useTheme();
   const styles = getStyles(colors, fonts);
   const [completedSets, setCompletedSets] = useState('');
   const [completedReps, setCompletedReps] = useState('');
 
-  // Extract targets
-  const targetSets = exercise?.sets ? parseInt(exercise.sets.split('x')[0], 10) || 0 : 0;
-  const targetReps = exercise?.sets ? parseInt(exercise.sets.split('x')[1], 10) || 0 : 0;
+  // exercise.planTarget is attached by useTrainScreen when an active
+  // mesocycle covers this exercise. When it's absent — no active mesocycle,
+  // or this exercise isn't in the mesocycle's routine — fall back to parsing
+  // the free-text "4x8" the exercise was created with, exactly as before.
+  const planTarget = exercise?.planTarget;
+  const targetSets = planTarget
+    ? planTarget.targetSets
+    : (exercise?.sets ? parseInt(exercise.sets.split('x')[0], 10) || 0 : 0);
+  const targetReps = planTarget
+    ? planTarget.targetReps
+    : (exercise?.sets ? parseInt(exercise.sets.split('x')[1], 10) || 0 : 0);
+  const targetWeight = planTarget ? planTarget.targetWeight : null;
   const totalTargetReps = targetSets * targetReps;
 
   useEffect(() => {
@@ -24,7 +44,11 @@ export default function SessionModal({ visible, onClose, onSave, exercise }) {
       setCompletedSets('');
       setCompletedReps('');
     }
-  }, [visible, exercise]);
+    // Keyed on the exercise id, not the exercise object: when a mesocycle is
+    // active, submitting a 1RM refreshes the plan and gives this exercise a
+    // new object identity, which would otherwise re-run this effect and wipe
+    // out whatever the user had already typed.
+  }, [visible, exercise?.id]);
 
   const handleSave = () => {
     onSave({
@@ -49,7 +73,18 @@ export default function SessionModal({ visible, onClose, onSave, exercise }) {
           <Text style={styles.modalTitle}>LOG SESSION: {exercise.name}</Text>
           
           <View style={styles.targetBox}>
-            <Text style={styles.targetLabel}>TARGET: {exercise.sets} ({totalTargetReps} TOTAL REPS)</Text>
+            {planTarget ? (
+              <Text style={styles.targetLabel}>
+                {t("TARGET")}: {targetSets}x{targetReps}
+                {targetWeight !== null ? ` @ ${targetWeight}${t("KG")}` : ''}
+                {' '}({totalTargetReps} TOTAL REPS)
+              </Text>
+            ) : (
+              <Text style={styles.targetLabel}>TARGET: {exercise.sets} ({totalTargetReps} TOTAL REPS)</Text>
+            )}
+            {planTarget?.needsOneRm && (
+              <OneRmPrompt onSubmit={(value) => onSetOneRm(exercise.id, value)} loading={isSettingOneRm} />
+            )}
           </View>
 
           <View style={styles.row}>
@@ -82,6 +117,18 @@ export default function SessionModal({ visible, onClose, onSave, exercise }) {
               <View style={[styles.progressFill, { width: `${percentage}%` }]} />
             </View>
           </View>
+
+          {restTimer && (
+            <View style={styles.restTimerBox}>
+              <RestTimer
+                remainingSec={restTimer.remainingSec}
+                isRunning={restTimer.isRunning}
+                durationSec={restDurationSec}
+                onStart={() => restTimer.start()}
+                onStop={restTimer.stop}
+              />
+            </View>
+          )}
 
           <View style={styles.buttonRow}>
             <Button label={t("CANCEL")} onPress={onClose} variant="secondary" style={styles.flexBtn} />
@@ -176,6 +223,12 @@ const getStyles = (colors, fonts) => StyleSheet.create({
   progressFill: {
     height: '100%',
     backgroundColor: colors.primary,
+  },
+  restTimerBox: {
+    backgroundColor: colors.backgroundCard,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: colors.borderAlt,
   },
   buttonRow: {
     flexDirection: 'row',

@@ -4,6 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import uuid from 'react-native-uuid';
 import { API_URL } from '../config/api';
 import { useAuthStore } from './useAuthStore';
+import { useMesocycleStore } from './useMesocycleStore';
+import { useSessionStore } from './useSessionStore';
 
 export const useWorkoutStore = create(
   persist(
@@ -61,18 +63,21 @@ export const useWorkoutStore = create(
         }
       },
 
-      addExercise: (exerciseData) => {
-        set((state) => ({
-          exercises: [
-            ...state.exercises,
-            {
-              id: uuid.v4(),
-              ...exerciseData,
-              type: state.activeTab,
-            },
-          ],
-        }));
-        get().syncExercises();
+      // Returns the created exercise and awaits the sync, because callers need
+      // its id AND need the row to exist server-side before anything can
+      // reference it — routine_exercises.exercise_id is a foreign key, so
+      // adding routine membership too early fails.
+      addExercise: async (exerciseData) => {
+        const exercise = {
+          id: uuid.v4(),
+          ...exerciseData,
+          type: get().activeTab,
+        };
+
+        set((state) => ({ exercises: [...state.exercises, exercise] }));
+        await get().syncExercises();
+
+        return exercise;
       },
       
       updateExercise: (id, updatedData) => {
@@ -114,44 +119,55 @@ export const useWorkoutStore = create(
       },
       
       sessionLogs: [],
-      logSession: async (exerciseId, completedSets, completedReps) => {
+      // targetWeight comes from the active mesocycle's plan when one covers this
+      // exercise. It has to be logged in place of the exercise's free-text
+      // weight: set_logs.weight is what statsService derives 1RM from, so
+      // recording the stale field would feed a wrong 1RM straight back into the
+      // percentages the next mesocycle week is calculated from.
+      logSession: async (exerciseId, completedSets, completedReps, targetWeight) => {
+        const loggedWeight =
+          targetWeight ?? (get().exercises.find((ex) => ex.id === exerciseId)?.weight || 0);
+
         const newLog = {
           id: uuid.v4(),
           exerciseId,
           date: new Date().toISOString(),
           completedSets,
           completedReps,
+          weight: loggedWeight,
         };
 
         set((state) => ({
           sessionLogs: [...state.sessionLogs, newLog],
         }));
 
-        // Sync to cloud
-        const userId = useAuthStore.getState().user?.id;
+        // Feeds the OPEN workout session (FRONTEND_TODO 2.6) instead of the
+        // legacy one-shot /sessions/sync path: auto-starts a session if none
+        // is open yet — tagged with the active mesocycle's id/week when one
+        // is running, so history records which block/week produced the
+        // numbers — so logging an exercise can never silently fail for lack
+        // of an open session. /sessions/sync itself is untouched on the
+        // backend (the already-installed APK still posts there); only this
+        // client no longer calls it.
         const token = useAuthStore.getState().token;
-        if (!userId) return;
+        if (!token) return;
 
         try {
-          await fetch(`${API_URL}/sessions/sync`, {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-              user_id: userId,
-              routine_id: null, // We don't have explicit routines tied to sessions yet
-              started_at: newLog.date,
-              ended_at: newLog.date,
-              logs: [{
-                exercise_id: exerciseId,
-                completed_sets: completedSets,
-                completed_reps: completedReps,
-                weight: get().exercises.find(ex => ex.id === exerciseId)?.weight || 0,
-                logged_at: newLog.date
-              }]
-            })
+          const { activeMesocycleId, mesocycles } = useMesocycleStore.getState();
+          const activeMesocycle = mesocycles.find((m) => m.id === activeMesocycleId);
+
+          const sessionId = await useSessionStore.getState().ensureActiveSessionId({
+            mesocycleId: activeMesocycleId || undefined,
+            mesocycleWeek: activeMesocycle?.current_week,
+          });
+          if (!sessionId) return;
+
+          await useSessionStore.getState().logSet(sessionId, {
+            exercise_id: exerciseId,
+            completed_sets: completedSets,
+            completed_reps: completedReps,
+            weight: loggedWeight,
+            logged_at: newLog.date,
           });
         } catch (error) {
           console.error('Failed to sync session log:', error);

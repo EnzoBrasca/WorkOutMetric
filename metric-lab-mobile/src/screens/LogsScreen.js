@@ -1,18 +1,28 @@
+import { useTranslation } from '../i18n';
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
 import { useTheme } from '../theme/useTheme';
+import Button from '../components/atoms/Button';
+import SessionHistoryRow from '../components/molecules/SessionHistoryRow';
+import { useLogsScreen } from '../hooks/useLogsScreen';
 
 export default function LogsScreen() {
+  const t = useTranslation();
   const { colors, fonts } = useTheme();
   const styles = getStyles(colors, fonts);
-  const logs = [
-    { period: '2024.03', value: '145.0', delta: '+1.8%', color: colors.primary },
-    { period: '2024.02', value: '142.5', delta: '+2.4%', color: colors.primary },
-    { period: '2024.01', value: '139.0', delta: '-0.7%', color: colors.danger },
-    { period: '2023.12', value: '140.0', delta: '+3.7%', color: colors.primary },
-    { period: '2023.11', value: '135.0', delta: '--', color: colors.textSecondary },
-  ];
+
+  const {
+    history,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    error,
+    selectedSessionId,
+    handleSelectSession,
+    handleRetry,
+    handleLoadMore,
+  } = useLogsScreen();
 
   return (
     <View style={styles.container}>
@@ -23,23 +33,48 @@ export default function LogsScreen() {
             <Rect x="0" y="6" width="12" height="2" />
             <Rect x="0" y="12" width="8" height="2" />
           </Svg>
-          <Text style={styles.headerTitle}>HISTORICAL REGISTRY</Text>
+          <Text style={styles.headerTitle}>{t('HISTORICAL_REGISTRY')}</Text>
         </View>
 
-        <View style={styles.table}>
-          <View style={styles.tableHeaderRow}>
-            <Text style={[styles.th, styles.colLeft]}>PERIOD</Text>
-            <Text style={[styles.th, styles.colCenter]}>RECORD</Text>
-            <Text style={[styles.th, styles.colRight]}>DELTA</Text>
+        {isLoading ? (
+          <View style={styles.stateContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
           </View>
-          {logs.map((log, idx) => (
-            <View key={idx} style={styles.tableRow}>
-              <Text style={[styles.tdPeriod, styles.colLeft]}>{log.period}</Text>
-              <Text style={[styles.tdValue, styles.colCenter]}>{log.value}KG</Text>
-              <Text style={[styles.tdDelta, styles.colRight, { color: log.color }]}>{log.delta}</Text>
+        ) : error ? (
+          <View style={styles.stateContainer}>
+            <Text style={styles.errorText}>{t('ERROR_LOADING_HISTORY')}</Text>
+            <Button label={t('RETRY')} onPress={handleRetry} variant="secondary" style={styles.stateBtn} />
+          </View>
+        ) : history.length === 0 ? (
+          <View style={styles.stateContainer}>
+            <Text style={styles.emptyText}>{t('NO_WORKOUTS_LOGGED')}</Text>
+          </View>
+        ) : (
+          <View style={styles.table}>
+            <View style={styles.tableHeaderRow}>
+              <Text style={[styles.th, styles.colLeft]}>{t('DATE')}</Text>
+              <Text style={[styles.th, styles.colCenter]}>{t('VOLUME')}</Text>
+              <Text style={[styles.th, styles.colRight]}>{t('DELTA')}</Text>
             </View>
-          ))}
-        </View>
+            {history.map((session) => (
+              <SessionHistoryRow
+                key={session.id}
+                session={session}
+                expanded={selectedSessionId === session.id}
+                onPress={() => handleSelectSession(session.id)}
+              />
+            ))}
+            {hasMore && (
+              <Button
+                label={t('LOAD_MORE')}
+                onPress={handleLoadMore}
+                loading={isLoadingMore}
+                variant="secondary"
+                style={styles.stateBtn}
+              />
+            )}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -67,6 +102,27 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     fontSize: 16,
     color: colors.primary,
   },
+  stateContainer: {
+    paddingVertical: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  errorText: {
+    fontFamily: fonts.medium,
+    fontSize: 14,
+    color: colors.danger,
+    textAlign: 'center',
+  },
+  emptyText: {
+    fontFamily: fonts.medium,
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  stateBtn: {
+    minWidth: 160,
+  },
   table: {
     borderWidth: 1,
     borderColor: colors.borderLight,
@@ -86,13 +142,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
   },
-  tableRow: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-    flexDirection: 'row',
-    padding: 16,
-    alignItems: 'center',
-  },
   colLeft: {
     flex: 1,
     textAlign: 'left',
@@ -104,19 +153,5 @@ const getStyles = (colors, fonts) => StyleSheet.create({
   colRight: {
     flex: 1,
     textAlign: 'right',
-  },
-  tdPeriod: {
-    fontFamily: fonts.regular,
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  tdValue: {
-    fontFamily: fonts.bold,
-    fontSize: 16,
-    color: colors.textPrimary,
-  },
-  tdDelta: {
-    fontFamily: fonts.bold,
-    fontSize: 14,
   },
 });
