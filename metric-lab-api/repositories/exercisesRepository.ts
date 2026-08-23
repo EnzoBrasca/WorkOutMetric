@@ -45,11 +45,13 @@ export async function updateOneRmByIdAndUserId(
   db: SupabaseClient,
   id: string,
   userId: string,
-  oneRm: number | null
+  oneRm: number | null,
+  sourceWeight: number | null = null,
+  sourceReps: number | null = null
 ) {
   const { data, error } = await db
     .from('exercises')
-    .update({ one_rm: oneRm })
+    .update({ one_rm: oneRm, one_rm_weight: sourceWeight, one_rm_reps: sourceReps })
     .eq('id', id)
     .eq('user_id', userId)
     .select();

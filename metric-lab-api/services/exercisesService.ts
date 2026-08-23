@@ -1,27 +1,62 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import * as exercisesRepository from '../repositories/exercisesRepository';
 import { NotFoundError, ValidationError } from '../utils/errors';
+import { estimateOneRm } from './oneRmCalculator';
 
 export async function listExercises(db: SupabaseClient, userId: string) {
   return exercisesRepository.findAllByUserId(db, userId);
 }
 
-// The reference 1RM every mesocycle target weight is derived from. It gets its
-// own path rather than riding along in syncExercises — see the note on
-// exercisesRepository.updateOneRmByIdAndUserId.
+/**
+ * Sets the reference 1RM every mesocycle target weight derives from.
+ *
+ * Accepts either shape:
+ *   { one_rm: 120 }              — the value directly
+ *   { weight: 100, reps: 5 }     — a set to estimate it from (Epley)
+ *
+ * The weight/reps form also records the source set, which marks the value as
+ * user-owned: logged history is reported alongside it but never replaces it.
+ *
+ * Has its own path rather than riding along in syncExercises — see the note on
+ * exercisesRepository.updateOneRmByIdAndUserId.
+ */
 export async function setOneRm(
   db: SupabaseClient,
   userId: string,
   id: string,
-  oneRm: unknown
+  input: { one_rm?: unknown; weight?: unknown; reps?: unknown }
 ) {
   if (!id) {
     throw new ValidationError('exercise_id is required');
   }
 
+  const { one_rm, weight, reps } = input ?? {};
+  const hasSet = weight !== undefined && weight !== null && weight !== ''
+    && reps !== undefined && reps !== null && reps !== '';
+
   let value: number | null = null;
-  if (oneRm !== null && oneRm !== undefined && oneRm !== '') {
-    const parsed = Number(oneRm);
+  let sourceWeight: number | null = null;
+  let sourceReps: number | null = null;
+  let lowConfidence = false;
+
+  if (hasSet) {
+    const parsedWeight = Number(weight);
+    const parsedReps = Number(reps);
+
+    if (!Number.isFinite(parsedWeight) || parsedWeight <= 0) {
+      throw new ValidationError('weight must be a positive number');
+    }
+    if (!Number.isInteger(parsedReps) || parsedReps <= 0) {
+      throw new ValidationError('reps must be a positive whole number');
+    }
+
+    const estimate = estimateOneRm(parsedWeight, parsedReps);
+    value = estimate.oneRm;
+    sourceWeight = parsedWeight;
+    sourceReps = parsedReps;
+    lowConfidence = estimate.lowConfidence;
+  } else if (one_rm !== null && one_rm !== undefined && one_rm !== '') {
+    const parsed = Number(one_rm);
     if (!Number.isFinite(parsed) || parsed < 0) {
       throw new ValidationError('one_rm must be a non-negative number');
     }
@@ -30,12 +65,22 @@ export async function setOneRm(
     value = parsed === 0 ? null : parsed;
   }
 
-  const updated = await exercisesRepository.updateOneRmByIdAndUserId(db, id, userId, value);
+  // Clearing the 1RM clears its provenance too, so a stale source set can never
+  // outlive the number it produced.
+  const updated = await exercisesRepository.updateOneRmByIdAndUserId(
+    db,
+    id,
+    userId,
+    value,
+    value === null ? null : sourceWeight,
+    value === null ? null : sourceReps
+  );
+
   if (!updated || updated.length === 0) {
     throw new NotFoundError('Exercise not found');
   }
 
-  return updated[0];
+  return { exercise: updated[0], lowConfidence };
 }
 
 // syncExercises is an upsert and can never remove rows, so deletion needs its

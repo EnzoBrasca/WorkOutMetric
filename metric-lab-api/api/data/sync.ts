@@ -39,13 +39,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.query.resource === 'one-rm') {
       try {
         const exerciseId = (req.query.exercise_id as string) || req.body?.exercise_id;
-        const exercise = await exercisesService.setOneRm(
+        // Accepts { one_rm } or { weight, reps } — see exercisesService.setOneRm.
+        const { exercise, lowConfidence } = await exercisesService.setOneRm(
           db,
           user_id,
           exerciseId,
-          req.body?.one_rm
+          req.body ?? {}
         );
-        return res.status(200).json({ exercise });
+        return res.status(200).json({ exercise, lowConfidence });
       } catch (error: any) {
         return respondWithError(res, error);
       }
