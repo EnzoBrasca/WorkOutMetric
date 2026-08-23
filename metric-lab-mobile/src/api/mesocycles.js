@@ -21,9 +21,12 @@ export const deleteMesocycle = (id) =>
 
 // `week` requests a specific week, `all` requests every week of the block.
 // With neither, the backend defaults to the mesocycle's current week.
+//
+// Shares the /mesocycles route behind resource=plan: Vercel counts every file
+// under api/ as a serverless function and the Hobby plan allows 12.
 export const getMesocyclePlan = (id, { week, all } = {}) => {
-  const params = new URLSearchParams({ id });
+  const params = new URLSearchParams({ resource: 'plan', id });
   if (week !== undefined) params.set('week', String(week));
   if (all) params.set('all', 'true');
-  return apiRequest(`/mesocycles/plan?${params.toString()}`);
+  return apiRequest(`/mesocycles?${params.toString()}`);
 };

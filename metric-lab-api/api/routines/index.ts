@@ -4,6 +4,12 @@ import { verifyTokenAndGetUser } from '../../utils/verify';
 import { respondWithError } from '../../utils/errors';
 import * as routinesService from '../../services/routinesService';
 
+// Routines and their exercise membership (public.routine_exercises).
+//
+// Membership lives here behind ?resource=exercises rather than in its own file
+// because Vercel counts every file under api/ as a separate serverless function,
+// and the Hobby plan allows 12 per deployment.
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   let user_id: string;
   let token: string;
@@ -32,8 +38,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
+  const isMembership = req.query.resource === 'exercises';
+  const routineId = (req.query.routine_id as string) || req.body?.routine_id;
+
   if (req.method === 'POST') {
     try {
+      if (isMembership) {
+        if (!routineId) {
+          return res.status(400).json({ error: 'routine_id is required' });
+        }
+        const exercises = await routinesService.setRoutineExercises(
+          db,
+          user_id,
+          routineId,
+          req.body?.exercises
+        );
+        return res.status(200).json({ message: 'Routine exercises updated', exercises });
+      }
+
       const routine = await routinesService.createRoutine(db, user_id, req.body);
       return res.status(201).json({ routine });
     } catch (error: any) {
@@ -42,12 +64,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method === 'DELETE') {
-    const id = (req.query.id as string) || req.body?.id;
-    if (!id) {
-      return res.status(400).json({ error: 'id is required' });
-    }
-
     try {
+      // Like exercise deletion, removing membership has to be explicit: the
+      // POST above is an upsert and can never drop a row from the routine.
+      if (isMembership) {
+        if (!routineId) {
+          return res.status(400).json({ error: 'routine_id is required' });
+        }
+        const exerciseId = (req.query.exercise_id as string) || req.body?.exercise_id;
+        if (!exerciseId) {
+          return res.status(400).json({ error: 'exercise_id is required' });
+        }
+
+        const { deleted } = await routinesService.removeExercise(
+          db,
+          user_id,
+          routineId,
+          exerciseId
+        );
+        if (deleted === 0) {
+          return res.status(404).json({ error: 'Exercise is not in this routine' });
+        }
+        return res.status(200).json({ message: 'Exercise removed from routine' });
+      }
+
+      const id = (req.query.id as string) || req.body?.id;
+      if (!id) {
+        return res.status(400).json({ error: 'id is required' });
+      }
+
       const { deleted } = await routinesService.deleteRoutine(db, user_id, id);
       if (deleted === 0) {
         return res.status(404).json({ error: 'Routine not found' });

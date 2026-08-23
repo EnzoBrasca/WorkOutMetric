@@ -1,10 +1,12 @@
 import { apiRequest } from './client';
 
-// Separate from exercise sync on purpose (mirrors the backend's own reasoning
-// in api/data/one-rm.ts): the exercise list is upserted as a whole elsewhere,
-// which would blank one_rm on any payload that omits it.
+// Shares the /data/sync route behind resource=one-rm — Vercel counts every file
+// under api/ as a serverless function and the Hobby plan allows 12 — but stays a
+// separate request from the bulk exercise upsert on purpose: postgrest-js
+// normalises the column set across upserted rows, so carrying one_rm in that
+// payload would blank it on every exercise whose entry omitted it.
 export const setOneRm = (exerciseId, oneRm) =>
-  apiRequest('/data/one-rm', {
+  apiRequest('/data/sync?resource=one-rm', {
     method: 'POST',
     body: { exercise_id: exerciseId, one_rm: oneRm },
   });

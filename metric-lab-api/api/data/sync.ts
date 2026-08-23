@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getScopedClient } from '../../utils/supabase';
 import { verifyTokenAndGetUser } from '../../utils/verify';
+import { respondWithError } from '../../utils/errors';
 import * as exercisesService from '../../services/exercisesService';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -26,6 +27,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method === 'POST') {
+    // Sets the reference 1RM for a single exercise. It shares this route
+    // because Vercel counts every file under api/ as a serverless function and
+    // the Hobby plan allows 12 per deployment, but it stays a separate branch
+    // from the upsert below: postgrest-js normalises the column set across
+    // upserted rows, so carrying one_rm in the bulk payload would blank it on
+    // every exercise whose entry happened to omit it.
+    //
+    // Gated on an explicit query param the installed Android build never sends,
+    // so the legacy sync path below is reached exactly as before.
+    if (req.query.resource === 'one-rm') {
+      try {
+        const exerciseId = (req.query.exercise_id as string) || req.body?.exercise_id;
+        const exercise = await exercisesService.setOneRm(
+          db,
+          user_id,
+          exerciseId,
+          req.body?.one_rm
+        );
+        return res.status(200).json({ exercise });
+      } catch (error: any) {
+        return respondWithError(res, error);
+      }
+    }
+
     // Sync (Upsert) exercises
     const { exercises } = req.body;
     if (!exercises || !Array.isArray(exercises)) {

@@ -25,5 +25,10 @@ export const getSessionHistory = ({ limit, offset } = {}) => {
 export const finishSession = (id, payload) =>
   apiRequest(`/sessions?id=${id}`, { method: 'PATCH', body: payload });
 
+// Shares the /sessions route behind resource=logs: Vercel counts every file
+// under api/ as a serverless function and the Hobby plan allows 12.
 export const logSessionSet = (sessionId, payload) =>
-  apiRequest(`/sessions/logs?session_id=${sessionId}`, { method: 'POST', body: payload });
+  apiRequest(`/sessions?resource=logs&session_id=${sessionId}`, {
+    method: 'POST',
+    body: payload,
+  });

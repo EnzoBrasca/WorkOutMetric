@@ -14,7 +14,7 @@ export const useMesocycleStore = create(
 
       // Calculated targets for the active mesocycle's current week. Never
       // stored on the backend, so this is always just a cache of the last
-      // successful /mesocycles/plan response.
+      // successful /mesocycles?resource=plan response.
       plan: null,
 
       isLoading: false,
