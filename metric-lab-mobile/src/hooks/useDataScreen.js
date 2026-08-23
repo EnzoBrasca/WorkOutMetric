@@ -5,6 +5,8 @@ import { useConfigStore } from '../store/useConfigStore';
 export function useDataScreen() {
   const lifts1rm = useConfigStore((state) => state.lifts1rm);
   const loadStats = useConfigStore((state) => state.loadStats);
+  const isLoading = useConfigStore((state) => state.isLoading);
+  const error = useConfigStore((state) => state.error);
 
   useFocusEffect(
     useCallback(() => {
@@ -50,6 +52,13 @@ export function useDataScreen() {
   return {
     lifts1rm,
     compounds,
+    isLoading,
+    error,
+    // The radar needs real lifts to plot. Since the invented starter values
+    // were removed, a new user genuinely has none and would otherwise be shown
+    // an empty chart with no explanation.
+    isEmpty: !isLoading && !error && lifts1rm.length === 0,
+    handleRetry: loadStats,
     size,
     center,
     radius,

@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import Svg, { Polygon, Line, Circle } from 'react-native-svg';
 import { useTheme } from '../theme/useTheme';
 import { useDataScreen } from '../hooks/useDataScreen';
+import AsyncState, { shouldRenderState } from '../components/molecules/AsyncState';
 
 export default function DataScreen() {
   const t = useTranslation();
@@ -13,6 +14,10 @@ export default function DataScreen() {
   const {
     lifts1rm,
     compounds,
+    isLoading,
+    error,
+    isEmpty,
+    handleRetry,
     size,
     center,
     radius,
@@ -21,6 +26,21 @@ export default function DataScreen() {
     radarPolygon,
     radarPrevPolygon,
   } = useDataScreen();
+
+  const state = { isLoading, error, isEmpty };
+
+  if (shouldRenderState(state)) {
+    return (
+      <View style={styles.container}>
+        <AsyncState
+          {...state}
+          errorLabel={t('ERROR_LOADING_STATS')}
+          emptyLabel={t('EMPTY_LIFTS')}
+          onRetry={handleRetry}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -47,14 +67,14 @@ export default function DataScreen() {
                 </View>
 
                 <View style={styles.barRow}>
-                  <Text style={styles.barLabel}>{prevVal}KG</Text>
+                  <Text style={styles.barLabel}>{prevVal}{t("KG")}</Text>
                   <View style={styles.barTrack}>
                     <View style={[styles.barFill, styles.barFillPrev, { width: `${prevPct}%` }]} />
                   </View>
                 </View>
 
                 <View style={styles.barRow}>
-                  <Text style={[styles.barLabel, styles.barLabelCurr]}>{currVal}KG</Text>
+                  <Text style={[styles.barLabel, styles.barLabelCurr]}>{currVal}{t("KG")}</Text>
                   <View style={styles.barTrack}>
                     <View style={[styles.barFill, styles.barFillCurr, { width: `${currPct}%` }]} />
                   </View>

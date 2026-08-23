@@ -3,59 +3,120 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { useTheme } from '../theme/useTheme';
 import { useConfigScreen } from '../hooks/useConfigScreen';
+import AsyncState, { shouldRenderState } from '../components/molecules/AsyncState';
+
+// Was a hardcoded "04.2024" rendered as if it were live.
+function currentMonthLabel() {
+  const now = new Date();
+  return `${String(now.getMonth() + 1).padStart(2, '0')}.${now.getFullYear()}`;
+}
 
 export default function ConfigScreen() {
   const t = useTranslation();
   const { colors, fonts } = useTheme();
   const styles = getStyles(colors, fonts);
-  const { localLifts, handleUpdateLift, handleReset, handleSaveConfig } = useConfigScreen();
+  const {
+    localLifts,
+    liftErrors,
+    canSave,
+    isLoading,
+    error,
+    isEmpty,
+    handleUpdateLift,
+    handleReset,
+    handleSaveConfig,
+    handleRetry,
+    localRestTimerSeconds,
+    restTimerError,
+    handleChangeRestTimerSeconds,
+  } = useConfigScreen();
+
+  const liftsState = { isLoading, error, isEmpty };
 
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerRow}>
           <View style={styles.infoBox}>
-            <Text style={styles.infoLabel}>PHASE</Text>
-            <Text style={styles.infoValue}>HYPERTROPHY</Text>
-          </View>
-          <View style={styles.infoBox}>
-            <Text style={styles.infoLabel}>CURRENT MONTH</Text>
-            <Text style={styles.infoValue}>04.2024</Text>
+            <Text style={styles.infoLabel}>{t("CURRENT_MONTH")}</Text>
+            <Text style={styles.infoValue}>{currentMonthLabel()}</Text>
           </View>
         </View>
 
         <View style={styles.configSection}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>1RM UPLOAD</Text>
+            <Text style={styles.sectionTitle}>{t("ONE_RM_UPLOAD")}</Text>
           </View>
 
-          <View style={styles.liftsList}>
-            {localLifts.map((l) => (
-              <View key={l.id} style={styles.liftRow}>
-                <View style={styles.liftInfo}>
-                  <Text style={styles.liftType}>{l.type}</Text>
-                  <Text style={styles.liftName}>{l.name}</Text>
-                </View>
-                <View style={styles.liftValueBox}>
-                  <TextInput
-                    style={styles.liftInput}
-                    value={l.value.toString()}
-                    onChangeText={(text) => handleUpdateLift(l.id, text)}
-                    keyboardType="numeric"
-                  />
-                  <Text style={styles.liftUnit}>{t("KG")}</Text>
-                </View>
+          {shouldRenderState(liftsState) ? (
+            <AsyncState
+              {...liftsState}
+              errorLabel={t('ERROR_LOADING_STATS')}
+              emptyLabel={t('EMPTY_LIFTS')}
+              onRetry={handleRetry}
+            />
+          ) : (
+            <>
+              <View style={styles.liftsList}>
+                {localLifts.map((l) => (
+                  <View key={l.id} style={styles.liftRow}>
+                    <View style={styles.liftInfo}>
+                      <Text style={styles.liftType}>{l.type}</Text>
+                      <Text style={styles.liftName}>{l.name}</Text>
+                      {liftErrors[l.id] ? (
+                        <Text style={styles.fieldError}>{t(liftErrors[l.id])}</Text>
+                      ) : null}
+                    </View>
+                    <View style={styles.liftValueBox}>
+                      <TextInput
+                        style={styles.liftInput}
+                        value={l.value.toString()}
+                        onChangeText={(text) => handleUpdateLift(l.id, text)}
+                        keyboardType="numeric"
+                      />
+                      <Text style={styles.liftUnit}>{t("KG")}</Text>
+                    </View>
+                  </View>
+                ))}
               </View>
-            ))}
+
+              <View style={styles.actionsRow}>
+                <TouchableOpacity style={styles.resetBtn} onPress={handleReset}>
+                  <Text style={styles.resetBtnText}>{t("RESET")}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.saveBtn, !canSave && styles.saveBtnDisabled]}
+                  onPress={handleSaveConfig}
+                  disabled={!canSave}
+                >
+                  <Text style={styles.saveBtnText}>{t("SAVE_CONFIG")}</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+        </View>
+
+        <View style={styles.configSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{t("REST_TIMER")}</Text>
           </View>
 
-          <View style={styles.actionsRow}>
-            <TouchableOpacity style={styles.resetBtn} onPress={handleReset}>
-              <Text style={styles.resetBtnText}>RESET</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.saveBtn} onPress={handleSaveConfig}>
-              <Text style={styles.saveBtnText}>SAVE CONFIG</Text>
-            </TouchableOpacity>
+          <View style={styles.liftRow}>
+            <View style={styles.liftInfo}>
+              <Text style={styles.liftName}>{t("REST_DURATION_SEC")}</Text>
+              {restTimerError ? (
+                <Text style={styles.fieldError}>{t(restTimerError)}</Text>
+              ) : null}
+            </View>
+            <View style={styles.liftValueBox}>
+              <TextInput
+                style={styles.liftInput}
+                value={localRestTimerSeconds}
+                onChangeText={handleChangeRestTimerSeconds}
+                keyboardType="numeric"
+              />
+              <Text style={styles.liftUnit}>{t("SEC")}</Text>
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -190,10 +251,18 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  saveBtnDisabled: {
+    opacity: 0.4,
+  },
   saveBtnText: {
     fontFamily: fonts.medium,
     fontSize: 12,
     letterSpacing: 1.2,
     color: colors.textDark,
+  },
+  fieldError: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    color: colors.danger,
   },
 });

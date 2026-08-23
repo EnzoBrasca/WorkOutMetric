@@ -16,7 +16,10 @@ const translations = {
     language: 'LANGUAGE',
     logout: 'LOGOUT',
     success: 'Profile updated successfully!',
-    error: 'Failed to update profile.'
+    error: 'Failed to update profile.',
+    nothingToUpdate: 'Enter a new username or password first.',
+    usernameTooShort: 'Username must be at least 3 characters.',
+    passwordTooShort: 'Password must be at least 6 characters.'
   },
   es: {
     title: 'PERFIL',
@@ -30,9 +33,15 @@ const translations = {
     language: 'IDIOMA',
     logout: 'CERRAR SESIÓN',
     success: '¡Perfil actualizado con éxito!',
-    error: 'Error al actualizar el perfil.'
+    error: 'Error al actualizar el perfil.',
+    nothingToUpdate: 'Ingresá un nuevo usuario o contraseña primero.',
+    usernameTooShort: 'El usuario debe tener al menos 3 caracteres.',
+    passwordTooShort: 'La contraseña debe tener al menos 6 caracteres.'
   }
 };
+
+const MIN_USERNAME_LENGTH = 3;
+const MIN_PASSWORD_LENGTH = 6;
 
 export function useProfileScreen() {
   const { user, token, logout, set: setAuth } = useAuthStore();
@@ -46,6 +55,26 @@ export function useProfileScreen() {
   const currentT = translations[language] || translations.en;
 
   const handleUpdate = async () => {
+    // The form accepted anything, including a submit with both fields empty,
+    // which fired a pointless request. An unchanged username is not an edit:
+    // only send what actually differs.
+    const username = newUsername.trim();
+    const password = newPassword.trim();
+    const usernameChanged = username && username !== user?.username;
+
+    if (!usernameChanged && !password) {
+      setMessage(currentT.nothingToUpdate);
+      return;
+    }
+    if (usernameChanged && username.length < MIN_USERNAME_LENGTH) {
+      setMessage(currentT.usernameTooShort);
+      return;
+    }
+    if (password && password.length < MIN_PASSWORD_LENGTH) {
+      setMessage(currentT.passwordTooShort);
+      return;
+    }
+
     setLoading(true);
     setMessage('');
     try {
@@ -55,8 +84,8 @@ export function useProfileScreen() {
         body: JSON.stringify({
           token,
           user_id: user.id,
-          new_username: newUsername.trim() || undefined,
-          new_password: newPassword.trim() || undefined
+          new_username: usernameChanged ? username : undefined,
+          new_password: password || undefined
         })
       });
 
@@ -67,8 +96,8 @@ export function useProfileScreen() {
       setNewPassword(''); // clear password field
 
       // Update local username state if it changed
-      if (newUsername.trim()) {
-        const updatedUser = { ...user, username: newUsername.trim() };
+      if (usernameChanged) {
+        const updatedUser = { ...user, username };
         setAuth({ user: updatedUser });
       }
     } catch (err) {
