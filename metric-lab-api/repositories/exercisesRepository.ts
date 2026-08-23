@@ -37,6 +37,27 @@ export async function deleteByIdAndUserId(db: SupabaseClient, id: string, userId
   return data;
 }
 
+// one_rm is deliberately kept out of upsertMany: postgrest-js normalises the
+// column set across upserted rows, so a payload where only some exercises carry
+// a 1RM would write an explicit NULL over the rest. Updating it one row at a
+// time is the only safe path.
+export async function updateOneRmByIdAndUserId(
+  db: SupabaseClient,
+  id: string,
+  userId: string,
+  oneRm: number | null
+) {
+  const { data, error } = await db
+    .from('exercises')
+    .update({ one_rm: oneRm })
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select();
+
+  if (error) throw error;
+  return data;
+}
+
 export async function upsertMany(db: SupabaseClient, rows: any[]) {
   const { data, error } = await db
     .from('exercises')
