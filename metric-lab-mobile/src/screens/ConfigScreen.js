@@ -206,14 +206,14 @@ export default function ConfigScreen() {
                           <Text style={styles.fieldError}>{t(rowError.reps)}</Text>
                         ) : null}
                       </View>
-                      <Button
-                        label={t('CALCULATE_ONE_RM')}
-                        onPress={() => handleSubmitOneRm(lift.id)}
-                        variant="primary"
-                        loading={isEstimating}
-                        style={styles.calculateBtn}
-                      />
                     </View>
+                    <Button
+                      label={t('CALCULATE_ONE_RM')}
+                      onPress={() => handleSubmitOneRm(lift.id)}
+                      variant="primary"
+                      loading={isEstimating}
+                      style={styles.calculateBtn}
+                    />
                     {rowError.submit ? (
                       <Text style={styles.fieldError}>{t(rowError.submit)}</Text>
                     ) : null}
@@ -448,7 +448,8 @@ const getStyles = (colors, fonts) => StyleSheet.create({
   },
   calculateBtn: {
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
+    marginTop: 8,
   },
   lowConfidenceText: {
     fontFamily: fonts.regular,
@@ -463,19 +464,24 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
   },
   liftInfo: {
+    flex: 1,
     gap: 4,
   },
   liftValueBox: {
-    width: 96,
+    minWidth: 96,
     height: 47,
+    paddingHorizontal: 8,
+    gap: 4,
     backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.borderAlt,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
+    flexShrink: 0,
   },
   liftInput: {
     fontFamily: fonts.semiBold,
@@ -483,7 +489,7 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     letterSpacing: 1.2,
     color: colors.primary,
     textAlign: 'center',
-    width: '100%',
+    minWidth: 40,
     height: '100%',
   },
   liftUnit: {
@@ -491,9 +497,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     opacity: 0.5,
-    position: 'absolute',
-    right: 8,
-    bottom: 8,
   },
   inlineUnit: {
     fontFamily: fonts.regular,

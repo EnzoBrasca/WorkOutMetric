@@ -1,6 +1,6 @@
 import { useTranslation } from '../i18n';
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView } from 'react-native';
 import { useTheme } from '../theme/useTheme';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -33,6 +33,10 @@ export default function RegisterScreen({ navigation }) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
       <View style={styles.content}>
         <Text style={styles.title}>{t("METRIC_LAB")}</Text>
         <Text style={styles.subtitle}>{t("REGISTER")}</Text>
@@ -78,6 +82,7 @@ export default function RegisterScreen({ navigation }) {
           <Text style={styles.linkText}>{t("HAVE_ACCOUNT_LOGIN")}</Text>
         </TouchableOpacity>
       </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -86,6 +91,9 @@ const getStyles = (colors, fonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
   },

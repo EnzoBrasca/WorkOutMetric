@@ -1,6 +1,7 @@
 import { useTranslation } from '../../i18n';
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, Modal, TextInput, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/useTheme';
 import Button from '../atoms/Button';
 import OneRmPrompt from '../molecules/OneRmPrompt';
@@ -18,6 +19,7 @@ export default function SessionModal({
 }) {
   const t = useTranslation();
   const { colors, fonts } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = getStyles(colors, fonts);
   const [completedSets, setCompletedSets] = useState('');
   const [completedReps, setCompletedReps] = useState('');
@@ -70,8 +72,9 @@ export default function SessionModal({
         style={styles.modalOverlay}
       >
         <View style={styles.modalContent}>
+          <ScrollView keyboardShouldPersistTaps="handled">
           <Text style={styles.modalTitle}>LOG SESSION: {exercise.name}</Text>
-          
+
           <View style={styles.targetBox}>
             {planTarget ? (
               <Text style={styles.targetLabel}>
@@ -130,10 +133,11 @@ export default function SessionModal({
             </View>
           )}
 
-          <View style={styles.buttonRow}>
+          <View style={[styles.buttonRow, { marginBottom: insets.bottom + 16 }]}>
             <Button label={t("CANCEL")} onPress={onClose} variant="secondary" style={styles.flexBtn} />
             <Button label={t("FINISH_AND_LOG")} onPress={handleSave} variant="primary" style={styles.flexBtn} />
           </View>
+          </ScrollView>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -151,6 +155,7 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     padding: 24,
     borderTopWidth: 1,
     borderColor: colors.border,
+    maxHeight: '85%',
   },
   modalTitle: {
     fontFamily: fonts.semiBold,
@@ -234,7 +239,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     flexDirection: 'row',
     gap: 16,
     marginTop: 16,
-    marginBottom: 32, // Padding for safe area
   },
   flexBtn: {
     flex: 1,

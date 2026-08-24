@@ -1,6 +1,7 @@
 import { useTranslation } from '../../i18n';
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/useTheme';
 import Button from '../atoms/Button';
 
@@ -18,6 +19,7 @@ export default function MesocycleListModal({
 }) {
   const t = useTranslation();
   const { colors, fonts } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = getStyles(colors, fonts);
 
   // Deleting is destructive and irreversible, so it takes a second tap on the
@@ -84,7 +86,7 @@ export default function MesocycleListModal({
             )}
           </ScrollView>
 
-          <View style={styles.buttonRow}>
+          <View style={[styles.buttonRow, { marginBottom: insets.bottom + 16 }]}>
             <Button
               label={t('CANCEL')}
               onPress={onClose}
@@ -183,7 +185,6 @@ const getStyles = (colors, fonts) =>
     buttonRow: {
       flexDirection: 'row',
       gap: 16,
-      marginBottom: 32, // Padding for safe area
     },
     flexBtn: {
       flex: 1,

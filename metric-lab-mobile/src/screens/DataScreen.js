@@ -215,8 +215,8 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     gap: 16,
   },
   radarWrapper: {
-    width: 300,
-    height: 300,
+    maxWidth: '100%',
+    padding: 10,
     borderRadius: 12,
     backgroundColor: colors.backgroundAlt,
     borderWidth: 1,

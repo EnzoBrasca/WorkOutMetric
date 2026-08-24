@@ -53,8 +53,8 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     gap: 8,
   },
   arrowBtn: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,

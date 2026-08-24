@@ -58,7 +58,8 @@ const getStyles = (colors, fonts) =>
       textAlign: 'center',
     },
     btn: {
-      paddingVertical: 8,
+      minHeight: 44,
+      justifyContent: 'center',
       paddingHorizontal: 16,
     },
     startBtn: {

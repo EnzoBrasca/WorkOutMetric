@@ -2,6 +2,7 @@ import { useTranslation } from '../../i18n';
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Modal, TextInput, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/useTheme';
 import Button from '../atoms/Button';
 
@@ -17,6 +18,7 @@ const CUSTOM_INCREMENT_THRESHOLD = 3;
 export default function MesocycleModal({ visible, onClose, onSave, routines, isSaving }) {
   const t = useTranslation();
   const { colors, fonts } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = getStyles(colors, fonts);
 
   const [name, setName] = useState('');
@@ -203,7 +205,7 @@ export default function MesocycleModal({ visible, onClose, onSave, routines, isS
               </View>
             )}
 
-            <View style={styles.buttonRow}>
+            <View style={[styles.buttonRow, { marginBottom: insets.bottom + 16 }]}>
               <Button label={t("CANCEL")} onPress={onClose} variant="secondary" style={styles.flexBtn} />
               <Button
                 label={t("CREATE")}
@@ -299,7 +301,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     flexDirection: 'row',
     gap: 16,
     marginTop: 16,
-    marginBottom: 32, // Padding for safe area
   },
   flexBtn: {
     flex: 1,

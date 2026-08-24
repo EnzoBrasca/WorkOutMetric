@@ -58,7 +58,7 @@ export default function ActiveSessionBar({
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>{t('WORKOUT_IN_PROGRESS')}</Text>
+        <Text style={styles.title} numberOfLines={1}>{t('WORKOUT_IN_PROGRESS')}</Text>
         <Text style={styles.elapsed}>{formatElapsed(activeSummary.startedAt)}</Text>
       </View>
 
@@ -103,8 +103,10 @@ const getStyles = (colors, fonts) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
+      gap: 12,
     },
     title: {
+      flex: 1,
       fontFamily: fonts.semiBold,
       fontSize: 14,
       letterSpacing: 1,

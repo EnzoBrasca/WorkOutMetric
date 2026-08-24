@@ -36,7 +36,7 @@ export default function MesocyclePanel({ activeMesocycle, plan, isPlanLoading, o
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.name}>{activeMesocycle.name}</Text>
+        <Text style={styles.name} numberOfLines={1}>{activeMesocycle.name}</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity onPress={onManagePress}>
             <Text style={styles.manageText}>{t("PAST_MESOCYCLES")}</Text>
@@ -76,6 +76,7 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
+    flexShrink: 0,
   },
   manageText: {
     fontFamily: fonts.medium,
@@ -107,8 +108,10 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
   },
   name: {
+    flex: 1,
     fontFamily: fonts.semiBold,
     fontSize: 16,
     letterSpacing: 1,

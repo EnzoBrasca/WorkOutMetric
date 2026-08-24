@@ -17,7 +17,7 @@ export default function ExerciseCard({ exercise, onEdit, onDelete, onStart, onSe
     <View style={styles.exerciseCard}>
       <View style={styles.cardHeader}>
         <View style={styles.headerLeft}>
-          <Text style={styles.exerciseName}>{exercise.name}</Text>
+          <Text style={styles.exerciseName} numberOfLines={2}>{exercise.name}</Text>
           <View style={styles.weekBadge}>
             <Text style={styles.weekText}>{exercise.week}</Text>
           </View>
@@ -38,7 +38,7 @@ export default function ExerciseCard({ exercise, onEdit, onDelete, onStart, onSe
         <View style={styles.statCol}>
           <Text style={styles.statLabel}>{t("TARGET_WEIGHT")}</Text>
           <View style={styles.statValueContainer}>
-            <Text style={styles.statValueWeight}>
+            <Text style={styles.statValueWeight} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
               {planTarget ? (planTarget.needsOneRm ? '—' : planTarget.targetWeight) : exercise.weight}
             </Text>
             <Text style={styles.statUnit}>{t("KG")}</Text>
@@ -46,7 +46,7 @@ export default function ExerciseCard({ exercise, onEdit, onDelete, onStart, onSe
         </View>
         <View style={styles.statCol}>
           <Text style={styles.statLabel}>{t("SETS_X_REPS")}</Text>
-          <Text style={styles.statValueSets}>
+          <Text style={styles.statValueSets} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
             {planTarget ? `${planTarget.targetSets}x${planTarget.targetReps}` : exercise.sets}
           </Text>
         </View>
@@ -99,9 +99,12 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     alignItems: 'center',
+    flexShrink: 0,
   },
   actionBtn: {
-    padding: 4,
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: 4,
   },
   actionText: {
     fontFamily: fonts.semiBold,
@@ -110,8 +113,9 @@ const getStyles = (colors, fonts) => StyleSheet.create({
   },
   startBtn: {
     backgroundColor: colors.primary,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    minHeight: 44,
+    justifyContent: 'center',
     marginRight: 4,
   },
   startText: {

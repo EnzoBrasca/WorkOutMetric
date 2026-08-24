@@ -1,8 +1,16 @@
 import { useCallback } from 'react';
+import { useWindowDimensions } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useConfigStore } from '../store/useConfigStore';
 
+// DataScreen's scroll content has 20pt of padding a side, and the radar sits
+// inside a card that adds 16pt more. Cap at 280 so it doesn't balloon on
+// tablets, and let it shrink below that on narrow phones instead of clipping.
+const RADAR_MAX_SIZE = 280;
+const RADAR_HORIZONTAL_CHROME = 72;
+
 export function useDataScreen() {
+  const { width } = useWindowDimensions();
   const lifts1rm = useConfigStore((state) => state.lifts1rm);
   const loadStats = useConfigStore((state) => state.loadStats);
   const isLoading = useConfigStore((state) => state.isLoading);
@@ -23,7 +31,7 @@ export function useDataScreen() {
   const maxLift = Math.max(...lifts1rm.map(l => Number(l.value)), 1);
 
   // Radar Chart calculations
-  const size = 280;
+  const size = Math.min(RADAR_MAX_SIZE, width - RADAR_HORIZONTAL_CHROME);
   const center = size / 2;
   const radius = (size / 2) - 20;
 
