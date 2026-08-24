@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../config/api';
+import { apiRequest } from '../api/client';
 
 export const useSettingsStore = create(
   persist(
@@ -64,13 +65,9 @@ export const useSettingsStore = create(
             customColors: state.customColors
           };
 
-          await fetch(`${API_URL}/auth/preferences`, {
+          await apiRequest('/auth/preferences', {
             method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${authStore.token}`
-            },
-            body: JSON.stringify({ preferences })
+            body: { preferences },
           });
         } catch (error) {
           console.error('Failed to sync preferences', error);

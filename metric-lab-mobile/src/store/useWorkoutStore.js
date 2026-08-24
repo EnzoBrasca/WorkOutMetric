@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import uuid from 'react-native-uuid';
 import { API_URL } from '../config/api';
+import { apiRequest } from '../api/client';
 import { useAuthStore } from './useAuthStore';
 import { useMesocycleStore } from './useMesocycleStore';
 import { useSessionStore } from './useSessionStore';
@@ -15,29 +16,29 @@ export const useWorkoutStore = create(
 
       exercises: [],
       isLoading: false,
-      
+      error: null,
+
       // Call this when user logs in to fetch their cloud exercises
       loadExercises: async () => {
         const userId = useAuthStore.getState().user?.id;
         if (!userId) return;
-        const token = useAuthStore.getState().token;
-        
-        set({ isLoading: true });
+
+        set({ isLoading: true, error: null });
         try {
-          const response = await fetch(`${API_URL}/data/sync?user_id=${userId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          const data = await response.json();
-          if (response.ok && data.exercises) {
-            // Map backend muscle_group back to frontend type
-            const loaded = data.exercises.map(ex => ({
-              ...ex,
-              type: ex.muscle_group?.toLowerCase() || 'push'
-            }));
-            set({ exercises: loaded });
-          }
+          // Goes through apiRequest so an expired access token is renewed and
+          // retried. This used to call fetch directly and check
+          // `response.ok && data.exercises`, which turned a 401 into a silent
+          // no-op — the catalog just stayed empty with no error shown.
+          const data = await apiRequest(`/data/sync?user_id=${userId}`);
+          // Map backend muscle_group back to frontend type
+          const loaded = (data.exercises ?? []).map(ex => ({
+            ...ex,
+            type: ex.muscle_group?.toLowerCase() || 'push'
+          }));
+          set({ exercises: loaded });
         } catch (error) {
           console.error('Failed to load exercises:', error);
+          set({ error: error.message });
         } finally {
           set({ isLoading: false });
         }
@@ -47,16 +48,11 @@ export const useWorkoutStore = create(
       syncExercises: async () => {
         const userId = useAuthStore.getState().user?.id;
         if (!userId) return;
-        const token = useAuthStore.getState().token;
-        
+
         try {
-          await fetch(`${API_URL}/data/sync?user_id=${userId}`, {
+          await apiRequest(`/data/sync?user_id=${userId}`, {
             method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ exercises: get().exercises })
+            body: { exercises: get().exercises },
           });
         } catch (error) {
           console.error('Failed to sync exercises:', error);
@@ -112,15 +108,12 @@ export const useWorkoutStore = create(
         // never remove a row, so calling it here would leave the exercise in
         // the cloud and bring it back on the next loadExercises.
         try {
-          const response = await fetch(`${API_URL}/data/sync?id=${id}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${token}` },
-          });
-
-          if (!response.ok && response.status !== 404) {
-            throw new Error(`Delete failed with status ${response.status}`);
-          }
+          await apiRequest(`/data/sync?id=${id}`, { method: 'DELETE' });
         } catch (error) {
+          // An already-deleted row is the outcome we wanted, so a 404 is not a
+          // failure and must not roll the optimistic removal back.
+          if (/404|not found/i.test(error.message)) return;
+
           console.error('Failed to delete exercise:', error);
           // Put it back rather than leaving local and cloud out of sync.
           set({ exercises: previous });

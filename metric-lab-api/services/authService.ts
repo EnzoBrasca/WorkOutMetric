@@ -38,6 +38,32 @@ export async function login(username: string, password: string) {
   return { user, session: authData.session };
 }
 
+// Trades a refresh token for a fresh session. The access token Supabase issues
+// lives one hour; without this the mobile app kept a dead JWT in storage, still
+// looked signed in, and every request 401'd — which read on screen as "the user
+// has no exercises" rather than as an expired session.
+//
+// Returns the same { user, session } shape as login so the client can adopt the
+// result through exactly one code path.
+export async function refresh(refreshToken: string) {
+  const { data, error } = await supabase.auth.refreshSession({
+    refresh_token: refreshToken,
+  });
+
+  if (error) throw error;
+
+  if (!data.session || !data.user) {
+    throw new Error('No session returned from refresh');
+  }
+
+  // Same reasoning as login: the profile lookup runs under RLS, so it needs a
+  // client carrying the new JWT.
+  const db = getScopedClient(data.session.access_token);
+  const user = await usersRepository.findByAuthId(db, data.user.id);
+
+  return { user, session: data.session };
+}
+
 export async function register(username: string, password: string) {
   const email = buildEmailFromUsername(username);
 
