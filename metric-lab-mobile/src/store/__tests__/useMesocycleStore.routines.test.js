@@ -202,3 +202,50 @@ describe('useMesocycleStore.removeExerciseFromRoutine', () => {
     ]);
   });
 });
+
+// Assigning push or pull happens when the user adds an exercise in Train, so
+// the routine has to come into existence at that moment. Requiring the user to
+// create it by hand first was a dead end that read as "my exercises vanished".
+describe('ensureRoutineForTab', () => {
+  it('returns the existing routine without creating a second one', async () => {
+    const result = await useMesocycleStore.getState().ensureRoutineForTab('push');
+
+    expect(result.success).toBe(true);
+    expect(result.routine.id).toBe(PUSH_ROUTINE.id);
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(useMesocycleStore.getState().routines).toHaveLength(1);
+  });
+
+  it('creates the routine when the tab has none yet', async () => {
+    const created = { id: 'routine-pull', name: 'PULL', user_id: 'user-1' };
+    global.fetch
+      .mockResolvedValueOnce(okResponse({ routine: created })) // POST /routines
+      .mockResolvedValueOnce(okResponse({ routine: { ...created, exercises: [] } }));
+
+    const result = await useMesocycleStore.getState().ensureRoutineForTab('pull');
+
+    expect(result.success).toBe(true);
+    expect(result.routine.id).toBe('routine-pull');
+    expect(useMesocycleStore.getState().routines.map((r) => r.name)).toEqual(['PUSH', 'PULL']);
+  });
+
+  it('matches the tab case-insensitively', async () => {
+    const result = await useMesocycleStore.getState().ensureRoutineForTab('PUSH');
+
+    expect(result.routine.id).toBe(PUSH_ROUTINE.id);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('reports failure instead of pretending a routine exists', async () => {
+    global.fetch.mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: 'nope' }),
+    });
+
+    const result = await useMesocycleStore.getState().ensureRoutineForTab('pull');
+
+    expect(result.success).toBe(false);
+    expect(result.routine).toBeUndefined();
+  });
+});

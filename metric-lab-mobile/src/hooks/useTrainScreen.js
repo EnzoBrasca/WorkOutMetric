@@ -9,8 +9,15 @@ import { useRestTimer } from './useRestTimer';
 
 export function useTrainScreen() {
   const t = useTranslation();
-  const { activeTab, setActiveTab, exercises, logSession, isLoading, loadExercises } =
-    useWorkoutStore();
+  const {
+    activeTab,
+    setActiveTab,
+    exercises,
+    logSession,
+    isLoading,
+    loadExercises,
+    updateExercise,
+  } = useWorkoutStore();
 
   const {
     mesocycles,
@@ -26,6 +33,7 @@ export function useTrainScreen() {
     loadRoutines,
     loadRoutineForTab,
     createRoutineForTab,
+    ensureRoutineForTab,
     refreshPlan,
     createMesocycle,
     selectActiveMesocycle,
@@ -136,9 +144,13 @@ export function useTrainScreen() {
     () => new Set(routineMembership.map((membership) => membership.exercise_id)),
     [routineMembership]
   );
+  // Every catalog exercise not already in this routine — deliberately NOT
+  // filtered by ex.type. Push/pull is assigned by adding the exercise here, so
+  // filtering on it beforehand hid every exercise that had not been assigned
+  // yet, which is all of them for anything created in the catalog.
   const catalogOptionsForAdd = useMemo(
-    () => exercises.filter((ex) => ex.type === activeTab && !routineExerciseIds.has(ex.id)),
-    [exercises, activeTab, routineExerciseIds]
+    () => exercises.filter((ex) => !routineExerciseIds.has(ex.id)),
+    [exercises, routineExerciseIds]
   );
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -179,8 +191,18 @@ export function useTrainScreen() {
   // on (routine_id, exercise_id), so "add" and "change this exercise's
   // target" are the same request, just with a different starting point.
   const handleSave = async ({ exerciseId, targetSets, targetReps }) => {
-    if (!activeRoutineDetail) return;
-    await addExerciseToRoutine(activeRoutineDetail.id, exerciseId, targetSets, targetReps);
+    // Adding is what assigns push or pull, so the routine is created on demand
+    // rather than being a prerequisite the user has to satisfy first.
+    const routine = activeRoutineDetail ?? (await ensureRoutineForTab(activeTab)).routine;
+    if (!routine) return;
+
+    await addExerciseToRoutine(routine.id, exerciseId, targetSets, targetReps);
+
+    // Keep the exercise's own push/pull tag in step with the routine it was
+    // just assigned to: /data/stats reports it and the catalog displays it.
+    if (exerciseCatalogById[exerciseId]?.type !== activeTab) {
+      updateExercise(exerciseId, { type: activeTab });
+    }
   };
 
   const handleRemoveFromRoutine = (exerciseId) => {

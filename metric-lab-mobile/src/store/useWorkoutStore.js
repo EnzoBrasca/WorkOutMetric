@@ -76,7 +76,11 @@ export const useWorkoutStore = create(
         const exercise = {
           id: uuid.v4(),
           ...exerciseData,
-          type: type ?? get().activeTab,
+          // An explicit null means "no push/pull yet" — the config catalog
+          // creates exercises unassigned and the training screen assigns them.
+          // Only an omitted argument falls back to the active tab, which is
+          // what the older in-train creation flow relied on.
+          type: type !== undefined ? type : get().activeTab,
         };
 
         set((state) => ({ exercises: [...state.exercises, exercise] }));

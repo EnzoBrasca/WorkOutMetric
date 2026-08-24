@@ -96,7 +96,12 @@ export async function syncExercises(db: SupabaseClient, userId: string, exercise
     const row: Record<string, unknown> = {
       user_id: userId,
       name: ex.name,
-      muscle_group: ex.type || 'PULL', // Map frontend 'type' to muscle_group
+      // Maps the frontend 'type' to muscle_group. Null is meaningful: an
+      // exercise created in the config catalog has no push/pull tag until it is
+      // added to a routine in the training screen, and defaulting it to 'PULL'
+      // showed a tag the user never chose. Clients that always send a type —
+      // including the Android build already in users' hands — are unaffected.
+      muscle_group: ex.type || null,
       base_weight: 0, // Optional default
       sets: ex.sets,
       week: ex.week,

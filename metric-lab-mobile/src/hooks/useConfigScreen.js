@@ -80,8 +80,9 @@ export function useConfigScreen() {
   };
 
   // --- New exercise form ---
+  // No push/pull here on purpose: the catalog holds every exercise whether it
+  // belongs to a routine or not, and the training screen is what assigns one.
   const [newExerciseName, setNewExerciseName] = useState('');
-  const [newExerciseType, setNewExerciseType] = useState('push');
   const [createError, setCreateError] = useState(null);
 
   const handleCreateExercise = async () => {
@@ -89,10 +90,9 @@ export function useConfigScreen() {
       setCreateError('VALIDATION_REQUIRED');
       return;
     }
-    const result = await createExercise(newExerciseName, newExerciseType);
+    const result = await createExercise(newExerciseName, null);
     if (result.success) {
       setNewExerciseName('');
-      setNewExerciseType('push');
       setCreateError(null);
     } else {
       setCreateError('ERROR_GENERIC');
@@ -166,11 +166,9 @@ export function useConfigScreen() {
     handleRetry,
 
     newExerciseName,
-    newExerciseType,
     createError,
     isCreatingExercise,
     handleChangeNewExerciseName: setNewExerciseName,
-    handleChangeNewExerciseType: setNewExerciseType,
     handleCreateExercise,
 
     editingId,

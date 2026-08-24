@@ -4,7 +4,6 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 
 import { useTheme } from '../theme/useTheme';
 import { useConfigScreen } from '../hooks/useConfigScreen';
 import AsyncState, { shouldRenderState } from '../components/molecules/AsyncState';
-import PushPullTabs from '../components/molecules/PushPullTabs';
 import Button from '../components/atoms/Button';
 
 // Was a hardcoded "04.2024" rendered as if it were live.
@@ -32,11 +31,9 @@ export default function ConfigScreen() {
     handleRetry,
 
     newExerciseName,
-    newExerciseType,
     createError,
     isCreatingExercise,
     handleChangeNewExerciseName,
-    handleChangeNewExerciseType,
     handleCreateExercise,
 
     editingId,
@@ -91,7 +88,6 @@ export default function ConfigScreen() {
               />
               {createError ? <Text style={styles.fieldError}>{t(createError)}</Text> : null}
             </View>
-            <PushPullTabs activeTab={newExerciseType} onTabSelect={handleChangeNewExerciseType} />
             <Button
               label={t("CREATE")}
               onPress={handleCreateExercise}

@@ -257,6 +257,24 @@ export const useMesocycleStore = create(
         }
       },
 
+      /**
+       * The routine for a tab, created on demand.
+       *
+       * Assigning an exercise to push or pull happens here, in Train, when the
+       * user adds it — the catalog in Config deliberately has no say in it. So
+       * the routine has to appear the moment it is needed: making the user
+       * create it by hand first was a dead end that read as "my exercises
+       * disappeared".
+       */
+      ensureRoutineForTab: async (tab) => {
+        const routineName = String(tab ?? '').toUpperCase();
+
+        const existing = get().routines.find((routine) => routine.name === routineName);
+        if (existing) return { success: true, routine: existing };
+
+        return get().createRoutineForTab(tab);
+      },
+
       // Adds an existing catalog exercise to a routine — Train's "add
       // exercise" only ever picks from the catalog now, never creates one —
       // and refreshes the cached routine detail so the new membership shows
