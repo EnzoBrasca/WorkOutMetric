@@ -1,10 +1,20 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import * as routinesRepository from '../repositories/routinesRepository';
-import * as mesocyclesRepository from '../repositories/mesocyclesRepository';
-import { ConflictError, NotFoundError, ValidationError } from '../utils/errors';
+import { NotFoundError, ValidationError } from '../utils/errors';
 
+/**
+ * The membership count comes back as a nested aggregate
+ * (`routine_exercises: [{ count: n }]`). Flatten it to a plain
+ * `exercise_count` so clients never have to know that shape, and default it
+ * to 0 — an empty routine has zero exercises, not an unknown number.
+ */
 export async function listRoutines(db: SupabaseClient, userId: string) {
-  return routinesRepository.findAllByUserId(db, userId);
+  const routines = await routinesRepository.findAllByUserId(db, userId);
+
+  return (routines ?? []).map((routine: any) => {
+    const { routine_exercises, ...rest } = routine;
+    return { ...rest, exercise_count: routine_exercises?.[0]?.count ?? 0 };
+  });
 }
 
 export async function getRoutine(db: SupabaseClient, userId: string, id: string) {
@@ -23,32 +33,79 @@ export async function createRoutine(db: SupabaseClient, userId: string, input: a
     throw new ValidationError('name is required');
   }
 
+  const type = typeof input?.type === 'string' ? input.type.trim() : '';
+  const description = typeof input?.description === 'string' ? input.description.trim() : '';
+
   return routinesRepository.insert(db, {
     user_id: userId,
     name,
-    description: input.description ?? null,
+    // Empty means "untagged", and NULL is what the column uses for that —
+    // storing '' would make an untagged routine sort and compare differently
+    // from one created before migration 009 added the column.
+    type: type || null,
+    description: description || null,
   });
 }
 
 /**
- * Deleting a routine used to cascade into its mesocycle, destroying the block's
- * configuration for good and orphaning the sessions that were planned from it.
- * The FK is ON DELETE RESTRICT now (migrations/006); this check exists so the
- * user gets a 409 explaining what blocks the delete instead of a raw constraint
- * violation surfacing as a 500.
+ * Partial update: only the fields actually present in the payload are written.
+ * Renaming a routine must not blank its type, and retagging must not blank its
+ * description, so an omitted field is left alone while an explicitly empty one
+ * clears the column.
  */
-export async function deleteRoutine(db: SupabaseClient, userId: string, id: string) {
+export async function updateRoutine(
+  db: SupabaseClient,
+  userId: string,
+  id: string,
+  input: any
+) {
   const routine = await routinesRepository.findByIdAndUserId(db, id, userId);
   if (!routine) {
     throw new NotFoundError('Routine not found');
   }
 
-  const mesocycles = await mesocyclesRepository.findByRoutineIdAndUserId(db, id, userId);
-  if (mesocycles && mesocycles.length > 0) {
-    const names = mesocycles.map((m: any) => m.name).join(', ');
-    throw new ConflictError(
-      `Routine is used by a training block (${names}). Delete the block first.`
-    );
+  const patch: Record<string, unknown> = {};
+
+  if (input?.name !== undefined) {
+    const name = typeof input.name === 'string' ? input.name.trim() : '';
+    if (!name) {
+      throw new ValidationError('name cannot be empty');
+    }
+    patch.name = name;
+  }
+
+  if (input?.type !== undefined) {
+    const type = typeof input.type === 'string' ? input.type.trim() : '';
+    patch.type = type || null;
+  }
+
+  if (input?.description !== undefined) {
+    const description = typeof input.description === 'string' ? input.description.trim() : '';
+    patch.description = description || null;
+  }
+
+  if (Object.keys(patch).length === 0) {
+    throw new ValidationError('nothing to update');
+  }
+
+  return routinesRepository.updateByIdAndUserId(db, id, userId, patch);
+}
+
+/**
+ * Deleting a routine used to be blocked by a 409 when a mesocycle pointed at
+ * it: the FK was ON DELETE RESTRICT (migrations/006) because a cascade would
+ * have destroyed the block's whole configuration.
+ *
+ * Mesocycles are user-scoped now — migration 010 dropped mesocycles.routine_id,
+ * and the foreign key with it — so a routine delete has no block to destroy.
+ * The routine's memberships go (routine_exercises cascades), the catalog
+ * exercises and the logged history stay, and any mesocycle simply plans one
+ * routine fewer from the next request on.
+ */
+export async function deleteRoutine(db: SupabaseClient, userId: string, id: string) {
+  const routine = await routinesRepository.findByIdAndUserId(db, id, userId);
+  if (!routine) {
+    throw new NotFoundError('Routine not found');
   }
 
   const deleted = await routinesRepository.deleteByIdAndUserId(db, id, userId);

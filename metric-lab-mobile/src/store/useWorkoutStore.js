@@ -11,8 +11,13 @@ import { useSessionStore } from './useSessionStore';
 export const useWorkoutStore = create(
   persist(
     (set, get) => ({
-      activeTab: 'push', // 'push' | 'pull'
-      setActiveTab: (tab) => set({ activeTab: tab }),
+      // The Train screen's selected routine. It used to be a hardcoded
+      // 'push' | 'pull' tab string matched against routine.name; routines are
+      // user-created and arbitrarily named now, so the selection is the
+      // routine's id. Null means "nothing selected yet" — the screen picks the
+      // user's first routine, or shows the empty state when they have none.
+      activeRoutineId: null,
+      setActiveRoutineId: (routineId) => set({ activeRoutineId: routineId }),
 
       exercises: [],
       isLoading: false,
@@ -64,19 +69,15 @@ export const useWorkoutStore = create(
       // reference it — routine_exercises.exercise_id is a foreign key, so
       // adding routine membership too early fails.
       //
-      // `type` is explicit because callers now include the exercise catalog
-      // (Config screen), which has no "current tab" to infer a type from.
-      // Falls back to activeTab so any caller that omits it keeps the exact
-      // behaviour this had before the catalog existed.
+      // `type` is explicit because the selected Train tab is a routine id now,
+      // not a push/pull string — there is nothing left to infer a type from.
+      // An exercise is tagged by being added to a routine (Train's add flow
+      // copies that routine's type onto it), so it starts out unassigned.
       addExercise: async (exerciseData, type) => {
         const exercise = {
           id: uuid.v4(),
           ...exerciseData,
-          // An explicit null means "no push/pull yet" — the config catalog
-          // creates exercises unassigned and the training screen assigns them.
-          // Only an omitted argument falls back to the active tab, which is
-          // what the older in-train creation flow relied on.
-          type: type !== undefined ? type : get().activeTab,
+          type: type ?? null,
         };
 
         set((state) => ({ exercises: [...state.exercises, exercise] }));
@@ -179,6 +180,17 @@ export const useWorkoutStore = create(
     {
       name: 'workout-storage',
       storage: createJSONStorage(() => AsyncStorage),
+      // v1 drops the persisted `activeTab` ('push'/'pull'). Existing installs
+      // already have it on disk, and leaving it there would rehydrate a key
+      // nothing reads while activeRoutineId stayed null anyway.
+      version: 1,
+      migrate: (persistedState, version) => {
+        if (version === 0 && persistedState) {
+          const { activeTab, ...rest } = persistedState;
+          return { ...rest, activeRoutineId: null };
+        }
+        return persistedState;
+      },
     }
   )
 );

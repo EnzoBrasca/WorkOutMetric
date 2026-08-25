@@ -15,6 +15,14 @@ export function TabBarIcon({ routeName, focused }) {
           <Rect x="4" y="6" width="12" height="2" />
         </Svg>
       );
+    case 'Routines':
+      return (
+        <Svg width="18" height="16" viewBox="0 0 18 16" fill={color}>
+          <Rect x="0" y="0" width="18" height="4" />
+          <Rect x="0" y="6" width="12" height="4" />
+          <Rect x="0" y="12" width="15" height="4" />
+        </Svg>
+      );
     case 'Data':
       return (
         <Svg width="18" height="16" viewBox="0 0 18 16" fill={color}>

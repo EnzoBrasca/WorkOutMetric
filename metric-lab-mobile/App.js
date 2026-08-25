@@ -8,12 +8,14 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import TrainScreen from './src/screens/TrainScreen';
+import RoutinesScreen from './src/screens/RoutinesScreen';
 import DataScreen from './src/screens/DataScreen';
 import ConfigScreen from './src/screens/ConfigScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import { useAuthStore } from './src/store/useAuthStore';
+import { useSessionStore } from './src/store/useSessionStore';
 import { useTheme } from './src/theme/useTheme';
 import { TabBarIcon } from './src/components/atoms/TabBarIcon';
 import Header from './src/components/organisms/Header';
@@ -28,6 +30,12 @@ function AppTabs() {
   const styles = getStyles(colors, fonts);
   const insets = useSafeAreaInsets();
 
+  // An open workout takes over the Train screen entirely, tab bar included, so
+  // nothing competes with the set in front of the user. Scoped to Train on
+  // purpose: on any other tab the bar stays, or a session left open would
+  // strand the user with no way to navigate.
+  const hasActiveSession = useSessionStore((state) => Boolean(state.activeSession));
+
   return (
     <View style={styles.container}>
       <Header />
@@ -39,18 +47,22 @@ function AppTabs() {
             },
             tabBarActiveTintColor: colors.primary,
             tabBarInactiveTintColor: colors.textSecondary,
-            tabBarStyle: [
-              styles.tabBar, 
-              { 
-                height: 56 + insets.bottom,
-                paddingBottom: insets.bottom
-              }
-            ],
+            tabBarStyle:
+              hasActiveSession && route.name === 'Train'
+                ? { display: 'none' }
+                : [
+                    styles.tabBar,
+                    {
+                      height: 56 + insets.bottom,
+                      paddingBottom: insets.bottom
+                    }
+                  ],
             tabBarLabelStyle: styles.tabBarLabel,
             tabBarItemStyle: styles.tabBarItem,
           })}
         >
           <Tab.Screen name="Train" component={TrainScreen} />
+          <Tab.Screen name="Routines" component={RoutinesScreen} />
           <Tab.Screen name="Data" component={DataScreen} />
           <Tab.Screen name="Config" component={ConfigScreen} />
           <Tab.Screen name="Profile" component={ProfileScreen} />

@@ -61,6 +61,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
+  // Renaming a routine and retagging its type: the routines screen edits both
+  // in place, and membership stays on the POST above.
+  if (req.method === 'PATCH' || req.method === 'PUT') {
+    try {
+      const id = (req.query.id as string) || req.body?.id;
+      if (!id) {
+        return res.status(400).json({ error: 'id is required' });
+      }
+
+      const routine = await routinesService.updateRoutine(db, user_id, id, req.body);
+      return res.status(200).json({ routine });
+    } catch (error: any) {
+      return respondWithError(res, error);
+    }
+  }
+
   if (req.method === 'DELETE') {
     try {
       // Like exercise deletion, removing membership has to be explicit: the

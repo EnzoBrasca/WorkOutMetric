@@ -11,7 +11,7 @@ function resetStores() {
     exercises: EXERCISES.map((ex) => ({ ...ex })),
     sessionLogs: [],
     isLoading: false,
-    activeTab: 'push',
+    activeRoutineId: 'routine-push',
   });
   useAuthStore.setState({
     isAuthenticated: true,
@@ -139,5 +139,34 @@ describe('useWorkoutStore.logSession', () => {
     const logs = useWorkoutStore.getState().sessionLogs;
     expect(logs).toHaveLength(2);
     expect(logs.map((l) => l.weight)).toEqual([100, 50]);
+  });
+});
+
+// The Train tabs are one per user routine now, so the selected tab is a
+// routine id — not a push/pull string. An exercise's own `type` can therefore
+// no longer be inferred from it.
+describe('useWorkoutStore.addExercise', () => {
+  it('leaves the type unassigned when the caller does not give one', async () => {
+    global.fetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
+
+    const created = await useWorkoutStore.getState().addExercise({ name: 'Curl' });
+
+    expect(created.type).toBeNull();
+  });
+
+  it('keeps an explicitly given type', async () => {
+    global.fetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
+
+    const created = await useWorkoutStore.getState().addExercise({ name: 'Curl' }, 'pull');
+
+    expect(created.type).toBe('pull');
+  });
+});
+
+describe('useWorkoutStore.setActiveRoutineId', () => {
+  it('stores the selected routine id', () => {
+    useWorkoutStore.getState().setActiveRoutineId('routine-legs');
+
+    expect(useWorkoutStore.getState().activeRoutineId).toBe('routine-legs');
   });
 });

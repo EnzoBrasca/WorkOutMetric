@@ -7,6 +7,11 @@ export const getRoutine = (id) => apiRequest(`/routines?id=${id}`);
 export const createRoutine = (payload) =>
   apiRequest('/routines', { method: 'POST', body: payload });
 
+// PATCH is a partial update: only the keys present in `payload` are written,
+// so renaming never blanks the type and vice versa.
+export const updateRoutine = (id, payload) =>
+  apiRequest(`/routines?id=${id}`, { method: 'PATCH', body: payload });
+
 export const deleteRoutine = (id) => apiRequest(`/routines?id=${id}`, { method: 'DELETE' });
 
 // Membership shares the /routines route behind resource=exercises: Vercel counts
