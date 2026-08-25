@@ -3,8 +3,12 @@ import assert from 'node:assert/strict';
 import { RELIABLE_REP_LIMIT, epley1RM, estimateOneRm } from './oneRmCalculator';
 
 describe('epley1RM', () => {
-  test('a single rep is the lift itself', () => {
-    assert.equal(epley1RM(100, 1), 100 * (1 + 1 / 30));
+  // Not an estimate: a rep completed at 100kg IS a 100kg single. Epley's
+  // algebraic form does not degenerate to the weight at one rep — it returns
+  // 103.33 — so the measured case is taken before the regression runs.
+  test('a single rep is the lift itself, not an estimate above it', () => {
+    assert.equal(epley1RM(100, 1), 100);
+    assert.equal(epley1RM(70, 1), 70);
   });
 
   test('matches the formula statsService has always used', () => {
@@ -28,7 +32,12 @@ describe('epley1RM', () => {
 describe('estimateOneRm', () => {
   test('rounds to the nearest half kilo', () => {
     assert.equal(estimateOneRm(100, 5).oneRm, 116.5); // 116.667 raw
-    assert.equal(estimateOneRm(100, 1).oneRm, 103.5); // 103.333 raw
+  });
+
+  // The case that sent a user looking: 70x1 read back as 72.5.
+  test('reports a single rep at the weight lifted', () => {
+    assert.equal(estimateOneRm(70, 1).oneRm, 70);
+    assert.equal(estimateOneRm(102.5, 1).oneRm, 102.5);
   });
 
   test('accepts numeric strings from a text input', () => {

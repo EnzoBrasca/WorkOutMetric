@@ -1,7 +1,8 @@
 // Estimating a 1RM from a single set.
 //
-// Epley: 1RM = weight * (1 + reps / 30). It was previously a private helper in
-// statsService; it lives here because the same formula now has two callers —
+// Epley: 1RM = weight * (1 + reps / 30), except at a single rep, which is a
+// measurement rather than an estimate (see epley1RM). It was previously a
+// private helper in statsService; it lives here because the formula has two callers —
 // deriving a 1RM from logged history, and deriving one from the weight x reps a
 // user types into the config screen.
 //
@@ -24,6 +25,14 @@ export interface OneRmEstimate {
 export function epley1RM(weight: number, reps: number): number {
   if (!Number.isFinite(weight) || !Number.isFinite(reps)) return 0;
   if (weight <= 0 || reps <= 0) return 0;
+
+  // A single rep is not estimated, it is observed: the user lifted this weight
+  // once, so that IS their one-rep max. Epley is a regression fitted to
+  // multi-rep sets and its algebraic form does not degenerate at reps = 1 —
+  // it returns weight * 31/30, reporting a 70kg single back as 72.5kg. Taking
+  // the measured case first also keeps the estimate from ever exceeding a
+  // heavier single the user actually performed.
+  if (reps === 1) return weight;
 
   return weight * (1 + reps / 30);
 }
