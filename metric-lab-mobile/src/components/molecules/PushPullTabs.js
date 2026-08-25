@@ -37,7 +37,9 @@ export default function PushPullTabs({ activeTab, onTabSelect }) {
 
 const getStyles = (colors, fonts) => StyleSheet.create({
   pushPullContainer: {
-    height: 48,
+    // minHeight, not height: the tab labels scale with the system font size
+    // while a fixed container does not, clipping them when "larger text" is on.
+    minHeight: 48,
     flexDirection: 'row',
     borderWidth: 1,
     borderColor: colors.border,

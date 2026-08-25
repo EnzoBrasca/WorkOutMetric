@@ -128,7 +128,7 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     borderColor: colors.borderLight,
   },
   tableHeaderRow: {
-    height: 41,
+    minHeight: 41,
     backgroundColor: colors.backgroundAlt,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderLight,

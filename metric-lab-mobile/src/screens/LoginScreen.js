@@ -1,6 +1,7 @@
 import { useTranslation } from '../i18n';
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/useTheme';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -8,6 +9,7 @@ export default function LoginScreen({ navigation }) {
   const t = useTranslation();
   const { colors, fonts } = useTheme();
   const styles = getStyles(colors, fonts);
+  const insets = useSafeAreaInsets();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -34,11 +36,14 @@ export default function LoginScreen({ navigation }) {
       style={styles.container}
     >
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 },
+        ]}
         keyboardShouldPersistTaps="handled"
       >
       <View style={styles.content}>
-        <Text style={styles.title}>{t("METRIC_LAB")}</Text>
+        <Text style={styles.title} maxFontSizeMultiplier={1.3}>{t("METRIC_LAB")}</Text>
         <Text style={styles.subtitle}>{t("LOGIN")}</Text>
 
         {errorMsg ? <Text style={styles.errorText}>[!] {errorMsg}</Text> : null}

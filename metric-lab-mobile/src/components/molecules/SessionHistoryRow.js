@@ -55,7 +55,7 @@ export default function SessionHistoryRow({ session, expanded, onPress }) {
           ) : (
             session.logs.map((log) => (
               <View key={log.id} style={styles.logRow}>
-                <Text style={styles.logName}>{log.name || t('UNKNOWN_EXERCISE')}</Text>
+                <Text style={styles.logName} numberOfLines={1}>{log.name || t('UNKNOWN_EXERCISE')}</Text>
                 <Text style={styles.logStats}>
                   {log.completedSets}x{log.completedReps}
                   {log.weight !== null && log.weight !== undefined ? ` @ ${log.weight}${t('KG')}` : ''}
@@ -122,6 +122,7 @@ const getStyles = (colors, fonts) =>
     logRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
+      alignItems: 'center',
       gap: 8,
     },
     logName: {

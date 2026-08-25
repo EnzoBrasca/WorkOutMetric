@@ -31,7 +31,7 @@ export default function Button({ label, onPress, variant = 'primary', disabled =
       {loading ? (
         <ActivityIndicator color={indicatorColor} />
       ) : (
-        <Text style={[styles.textBase, textVariantStyle]}>{label}</Text>
+        <Text style={[styles.textBase, textVariantStyle]} numberOfLines={1}>{label}</Text>
       )}
     </TouchableOpacity>
   );

@@ -22,7 +22,7 @@ export default function Header() {
   return (
     <View style={[styles.safeArea, { paddingTop: insets.top }]}>
       <View style={[styles.container, { justifyContent: 'space-between' }]}>
-        <Text style={styles.title}>
+        <Text style={styles.title} numberOfLines={1}>
           {t("METRIC_LAB")}
           {APP_VERSION ? <Text style={styles.version}> V{APP_VERSION}</Text> : null}
         </Text>
@@ -43,13 +43,14 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     borderBottomColor: colors.borderAlt,
   },
   container: {
-    height: 64,
+    minHeight: 64,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
   },
   title: {
+    flexShrink: 1,
     fontFamily: fonts.bold,
     fontSize: 20,
     letterSpacing: -0.6,
@@ -61,6 +62,7 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     color: colors.textSecondary,
   },
   logoutBtn: {
+    flexShrink: 0,
     padding: 8,
   },
   logoutText: {

@@ -105,7 +105,10 @@ export function useConfigScreen() {
 
   const handleStartRename = (lift) => {
     setEditingId(lift.id);
-    setRenameValue(lift.name);
+    // The rename input caps at 40 chars (maxLength). Names created before
+    // that cap, or via the API, can be longer — truncate here so the
+    // displayed value matches what a save would actually persist.
+    setRenameValue(lift.name.slice(0, 40));
   };
 
   const handleCancelRename = () => {

@@ -324,6 +324,7 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     overflow: 'hidden',
   },
   picker: {
+    height: 50,
     color: colors.textPrimary,
     backgroundColor: colors.backgroundCard,
   },

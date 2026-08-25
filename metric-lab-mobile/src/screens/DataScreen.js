@@ -67,14 +67,28 @@ export default function DataScreen() {
                 </View>
 
                 <View style={styles.barRow}>
-                  <Text style={styles.barLabel}>{prevVal}{t("KG")}</Text>
+                  <Text
+                    style={styles.barLabel}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.5}
+                  >
+                    {prevVal}{t("KG")}
+                  </Text>
                   <View style={styles.barTrack}>
                     <View style={[styles.barFill, styles.barFillPrev, { width: `${prevPct}%` }]} />
                   </View>
                 </View>
 
                 <View style={styles.barRow}>
-                  <Text style={[styles.barLabel, styles.barLabelCurr]}>{currVal}{t("KG")}</Text>
+                  <Text
+                    style={[styles.barLabel, styles.barLabelCurr]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.5}
+                  >
+                    {currVal}{t("KG")}
+                  </Text>
                   <View style={styles.barTrack}>
                     <View style={[styles.barFill, styles.barFillCurr, { width: `${currPct}%` }]} />
                   </View>

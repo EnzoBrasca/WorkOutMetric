@@ -105,6 +105,7 @@ export default function MesocycleModal({ visible, onClose, onSave, routines, isS
                 onChangeText={setName}
                 placeholder="e.g. HYPERTROPHY BLOCK"
                 placeholderTextColor={colors.textSecondary}
+                maxLength={40}
               />
             </View>
 
@@ -284,6 +285,7 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     overflow: 'hidden',
   },
   picker: {
+    height: 50,
     color: colors.textPrimary,
     backgroundColor: colors.background,
   },

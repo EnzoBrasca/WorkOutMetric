@@ -56,7 +56,7 @@ export default function MesocycleListModal({
                 return (
                   <View key={mesocycle.id} style={styles.row}>
                     <View style={styles.rowInfo}>
-                      <Text style={styles.rowName}>{mesocycle.name}</Text>
+                      <Text style={styles.rowName} numberOfLines={1} ellipsizeMode="tail">{mesocycle.name}</Text>
                       <Text style={styles.rowMeta}>
                         {t('WEEKS_SHORT')} {mesocycle.current_week}/{mesocycle.total_weeks}
                         {isActive ? ` · ${t('ACTIVE')}` : ''}

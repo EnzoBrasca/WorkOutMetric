@@ -85,6 +85,7 @@ export default function ConfigScreen() {
                 onChangeText={handleChangeNewExerciseName}
                 placeholder={t("NEW_EXERCISE_NAME_PLACEHOLDER")}
                 placeholderTextColor={colors.textSecondary}
+                maxLength={40}
               />
               {createError ? <Text style={styles.fieldError}>{t(createError)}</Text> : null}
             </View>
@@ -123,9 +124,10 @@ export default function ConfigScreen() {
                             value={renameValue}
                             onChangeText={handleChangeRenameValue}
                             autoFocus
+                            maxLength={40}
                           />
                         ) : (
-                          <Text style={styles.liftName}>{lift.name}</Text>
+                          <Text style={styles.liftName} numberOfLines={1} ellipsizeMode="tail">{lift.name}</Text>
                         )}
                         <Text style={styles.liftType}>{typeLabel(t, lift.type)}</Text>
                       </View>
@@ -472,7 +474,7 @@ const getStyles = (colors, fonts) => StyleSheet.create({
   },
   liftValueBox: {
     minWidth: 96,
-    height: 47,
+    minHeight: 47,
     paddingHorizontal: 8,
     gap: 4,
     backgroundColor: colors.background,

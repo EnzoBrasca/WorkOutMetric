@@ -211,7 +211,7 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     gap: 16,
   },
   addExerciseBtn: {
-    height: 58,
+    minHeight: 58,
     borderWidth: 1,
     borderColor: colors.primary,
     flexDirection: 'row',

@@ -73,7 +73,7 @@ export default function SessionModal({
       >
         <View style={styles.modalContent}>
           <ScrollView keyboardShouldPersistTaps="handled">
-          <Text style={styles.modalTitle}>LOG SESSION: {exercise.name}</Text>
+          <Text style={styles.modalTitle} numberOfLines={1} ellipsizeMode="tail">LOG SESSION: {exercise.name}</Text>
 
           <View style={styles.targetBox}>
             {planTarget ? (
