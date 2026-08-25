@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useConfigStore } from '../store/useConfigStore';
+import { useMesocycleStore } from '../store/useMesocycleStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 
 // Mirrors the backend's own rule (services/exercisesService.setOneRm) so a bad
@@ -30,6 +31,25 @@ function validateSet(weightText, repsText) {
   return errors;
 }
 
+// How many exercise cards Config reveals at a time. Each card carries a 1RM
+// readout and a weight x reps form, so a catalog of any size buries the
+// sections below it unless it is paged.
+export const CATALOG_PAGE_SIZE = 5;
+
+/**
+ * The slice of the catalog currently on screen, plus whether a "load more"
+ * button is warranted. `visibleCount` can exceed the list — deleting exercises
+ * with several pages open shrinks it — so `remaining` never goes negative.
+ */
+export function paginateLifts(lifts, visibleCount) {
+  const all = lifts ?? [];
+  return {
+    visible: all.slice(0, visibleCount),
+    hasMore: all.length > visibleCount,
+    remaining: Math.max(all.length - visibleCount, 0),
+  };
+}
+
 export function useConfigScreen() {
   const {
     lifts1rm,
@@ -45,13 +65,27 @@ export function useConfigScreen() {
     deleteExercise,
   } = useConfigStore();
 
+  // Mesocycles are configured here, not on Train: creating a block, listing
+  // the past ones, activating one and deleting one are all setup, and Train is
+  // left with just the current week and an activate/deactivate control.
+  const {
+    mesocycles,
+    activeMesocycleId,
+    isLoading: isMesocycleSaving,
+    loadMesocycles,
+    createMesocycle,
+    selectActiveMesocycle,
+    deleteMesocycle,
+  } = useMesocycleStore();
+
   const { restTimerSeconds, setRestTimerSeconds } = useSettingsStore();
   const [localRestTimerSeconds, setLocalRestTimerSeconds] = useState(String(restTimerSeconds));
 
   useFocusEffect(
     useCallback(() => {
       loadStats();
-    }, [loadStats])
+      loadMesocycles();
+    }, [loadStats, loadMesocycles])
   );
 
   useEffect(() => {
@@ -79,6 +113,46 @@ export function useConfigScreen() {
     loadStats();
   };
 
+  // --- Catalog paging ---
+  const [visibleLiftCount, setVisibleLiftCount] = useState(CATALOG_PAGE_SIZE);
+
+  const { visible: visibleLifts, hasMore: hasMoreLifts, remaining: remainingLiftCount } = useMemo(
+    () => paginateLifts(lifts1rm, visibleLiftCount),
+    [lifts1rm, visibleLiftCount]
+  );
+
+  const handleLoadMoreLifts = () =>
+    setVisibleLiftCount((count) => count + CATALOG_PAGE_SIZE);
+
+  // --- Mesocycles ---
+  const [mesocycleModalVisible, setMesocycleModalVisible] = useState(false);
+  const [pendingDeleteMesocycleId, setPendingDeleteMesocycleId] = useState(null);
+
+  const handleOpenMesocycleModal = () => setMesocycleModalVisible(true);
+  const handleCloseMesocycleModal = () => setMesocycleModalVisible(false);
+
+  // The store makes a freshly created block the active one, so there is
+  // nothing to activate afterwards.
+  const handleCreateMesocycle = (payload) => createMesocycle(payload);
+
+  const handleActivateMesocycle = (id) => selectActiveMesocycle(id);
+
+  // Deactivating the running block without picking another one. Train falls
+  // back to its pre-mesocycle behavior, and the block can be re-activated from
+  // either screen.
+  const handleDeactivateMesocycle = () => selectActiveMesocycle(null);
+
+  // Destructive, so it takes a second tap on the same row — same pattern as
+  // exercise deletion above.
+  const handleDeleteMesocycle = (id) => {
+    if (pendingDeleteMesocycleId !== id) {
+      setPendingDeleteMesocycleId(id);
+      return;
+    }
+    setPendingDeleteMesocycleId(null);
+    deleteMesocycle(id);
+  };
+
   // --- New exercise form ---
   // No push/pull here on purpose: the catalog holds every exercise whether it
   // belongs to a routine or not, and the training screen is what assigns one.
@@ -94,6 +168,11 @@ export function useConfigScreen() {
     if (result.success) {
       setNewExerciseName('');
       setCreateError(null);
+      // The store appends new exercises, so with the catalog paged the card the
+      // user just created lands past the last visible one and the screen looks
+      // like nothing happened. Reveal far enough to show it.
+      const total = useConfigStore.getState().lifts1rm.length;
+      setVisibleLiftCount((count) => Math.max(count, total));
     } else {
       setCreateError('ERROR_GENERIC');
     }
@@ -124,7 +203,7 @@ export function useConfigScreen() {
   };
 
   // --- Delete: destructive, so it takes a second tap on the same row rather
-  // than firing straight away — same pattern as MesocycleListModal.
+  // than firing straight away — same pattern as mesocycle deletion above.
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
 
   const handleDeleteExercise = (id) => {
@@ -162,7 +241,10 @@ export function useConfigScreen() {
   };
 
   return {
-    localLifts: lifts1rm,
+    localLifts: visibleLifts,
+    hasMoreLifts,
+    remainingLiftCount,
+    handleLoadMoreLifts,
     isLoading,
     error,
     isEmpty: !isLoading && !error && lifts1rm.length === 0,
@@ -191,6 +273,18 @@ export function useConfigScreen() {
     handleChangeRowWeight,
     handleChangeRowReps,
     handleSubmitOneRm,
+
+    mesocycles,
+    activeMesocycleId,
+    isMesocycleSaving,
+    mesocycleModalVisible,
+    pendingDeleteMesocycleId,
+    handleOpenMesocycleModal,
+    handleCloseMesocycleModal,
+    handleCreateMesocycle,
+    handleActivateMesocycle,
+    handleDeactivateMesocycle,
+    handleDeleteMesocycle,
 
     localRestTimerSeconds,
     restTimerError,

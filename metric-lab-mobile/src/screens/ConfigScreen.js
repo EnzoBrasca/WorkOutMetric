@@ -5,12 +5,7 @@ import { useTheme } from '../theme/useTheme';
 import { useConfigScreen } from '../hooks/useConfigScreen';
 import AsyncState, { shouldRenderState } from '../components/molecules/AsyncState';
 import Button from '../components/atoms/Button';
-
-// Was a hardcoded "04.2024" rendered as if it were live.
-function currentMonthLabel() {
-  const now = new Date();
-  return `${String(now.getMonth() + 1).padStart(2, '0')}.${now.getFullYear()}`;
-}
+import MesocycleModal from '../components/organisms/MesocycleModal';
 
 function typeLabel(t, type) {
   const normalized = String(type ?? '').toLowerCase();
@@ -25,6 +20,9 @@ export default function ConfigScreen() {
   const styles = getStyles(colors, fonts);
   const {
     localLifts,
+    hasMoreLifts,
+    remainingLiftCount,
+    handleLoadMoreLifts,
     isLoading,
     error,
     isEmpty,
@@ -54,6 +52,18 @@ export default function ConfigScreen() {
     handleChangeRowReps,
     handleSubmitOneRm,
 
+    mesocycles,
+    activeMesocycleId,
+    isMesocycleSaving,
+    mesocycleModalVisible,
+    pendingDeleteMesocycleId,
+    handleOpenMesocycleModal,
+    handleCloseMesocycleModal,
+    handleCreateMesocycle,
+    handleActivateMesocycle,
+    handleDeactivateMesocycle,
+    handleDeleteMesocycle,
+
     localRestTimerSeconds,
     restTimerError,
     handleChangeRestTimerSeconds,
@@ -64,10 +74,93 @@ export default function ConfigScreen() {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.headerRow}>
-          <View style={styles.infoBox}>
-            <Text style={styles.infoLabel}>{t("CURRENT_MONTH")}</Text>
-            <Text style={styles.infoValue}>{currentMonthLabel()}</Text>
+        <View style={styles.configSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{t("PAST_MESOCYCLES")}</Text>
+          </View>
+
+          {mesocycles.length === 0 ? (
+            <Text style={styles.emptyText}>{t("NO_MESOCYCLES_YET")}</Text>
+          ) : (
+            <View style={styles.liftsList}>
+              {mesocycles.map((mesocycle) => {
+                const isActive = mesocycle.id === activeMesocycleId;
+                const isPendingDelete = pendingDeleteMesocycleId === mesocycle.id;
+
+                return (
+                  <View key={mesocycle.id} style={styles.liftCard}>
+                    <View style={styles.liftHeaderRow}>
+                      <View style={styles.liftNameGroup}>
+                        <Text style={styles.liftName} numberOfLines={1} ellipsizeMode="tail">
+                          {mesocycle.name}
+                        </Text>
+                        <Text style={styles.liftType}>
+                          {t('WEEKS_SHORT')} {mesocycle.current_week}/{mesocycle.total_weeks}
+                          {isActive ? ` · ${t('ACTIVE')}` : ''}
+                        </Text>
+                      </View>
+                      <View style={styles.liftActions}>
+                        <TouchableOpacity
+                          onPress={() =>
+                            isActive
+                              ? handleDeactivateMesocycle()
+                              : handleActivateMesocycle(mesocycle.id)
+                          }
+                          testID={`mesocycle-toggle-${mesocycle.id}`}
+                        >
+                          <Text style={styles.actionText}>
+                            {isActive ? t('END_MESOCYCLE') : t('SWITCH_MESOCYCLE')}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => handleDeleteMesocycle(mesocycle.id)}
+                          testID={`mesocycle-delete-${mesocycle.id}`}
+                        >
+                          <Text style={[styles.actionText, { color: colors.danger }]}>
+                            {isPendingDelete ? t('CONFIRM') : t('DEL')}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    {isPendingDelete ? (
+                      <Text style={styles.confirmText}>
+                        {t('CONFIRM_DELETE_MESOCYCLE_BODY')}
+                      </Text>
+                    ) : null}
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
+          <Button
+            label={t("NEW_MESOCYCLE")}
+            onPress={handleOpenMesocycleModal}
+            variant="primary"
+          />
+        </View>
+
+        <View style={styles.configSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{t("REST_TIMER")}</Text>
+          </View>
+
+          <View style={styles.liftRow}>
+            <View style={styles.liftInfo}>
+              <Text style={styles.liftName}>{t("REST_DURATION_SEC")}</Text>
+              {restTimerError ? (
+                <Text style={styles.fieldError}>{t(restTimerError)}</Text>
+              ) : null}
+            </View>
+            <View style={styles.liftValueBox}>
+              <TextInput
+                style={styles.liftInput}
+                value={localRestTimerSeconds}
+                onChangeText={handleChangeRestTimerSeconds}
+                keyboardType="numeric"
+              />
+              <Text style={styles.liftUnit}>{t("SEC")}</Text>
+            </View>
           </View>
         </View>
 
@@ -225,34 +318,25 @@ export default function ConfigScreen() {
                   </View>
                 );
               })}
+
+              {hasMoreLifts ? (
+                <Button
+                  label={`${t('LOAD_MORE')} (${remainingLiftCount})`}
+                  onPress={handleLoadMoreLifts}
+                  variant="secondary"
+                />
+              ) : null}
             </View>
           )}
         </View>
-
-        <View style={styles.configSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{t("REST_TIMER")}</Text>
-          </View>
-
-          <View style={styles.liftRow}>
-            <View style={styles.liftInfo}>
-              <Text style={styles.liftName}>{t("REST_DURATION_SEC")}</Text>
-              {restTimerError ? (
-                <Text style={styles.fieldError}>{t(restTimerError)}</Text>
-              ) : null}
-            </View>
-            <View style={styles.liftValueBox}>
-              <TextInput
-                style={styles.liftInput}
-                value={localRestTimerSeconds}
-                onChangeText={handleChangeRestTimerSeconds}
-                keyboardType="numeric"
-              />
-              <Text style={styles.liftUnit}>{t("SEC")}</Text>
-            </View>
-          </View>
-        </View>
       </ScrollView>
+
+      <MesocycleModal
+        visible={mesocycleModalVisible}
+        onClose={handleCloseMesocycleModal}
+        onSave={handleCreateMesocycle}
+        isSaving={isMesocycleSaving}
+      />
     </View>
   );
 }
@@ -266,29 +350,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     padding: 16,
     paddingBottom: 32,
     gap: 32,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  infoBox: {
-    flex: 1,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    padding: 16,
-    gap: 4,
-  },
-  infoLabel: {
-    fontFamily: fonts.medium,
-    fontSize: 12,
-    letterSpacing: 0.6,
-    color: colors.primary,
-  },
-  infoValue: {
-    fontFamily: fonts.regular,
-    fontSize: 16,
-    color: colors.textPrimary,
   },
   configSection: {
     gap: 16,
@@ -330,6 +391,11 @@ const getStyles = (colors, fonts) => StyleSheet.create({
   },
   liftsList: {
     gap: 12,
+  },
+  emptyText: {
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    color: colors.textSecondary,
   },
   liftCard: {
     backgroundColor: colors.background,

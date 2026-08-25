@@ -47,7 +47,7 @@ function resetStores() {
   });
   useWorkoutStore.setState({
     exercises: WORKOUT_EXERCISES.map((ex) => ({ ...ex })),
-    activeTab: 'push',
+    activeRoutineId: 'routine-push',
   });
   useAuthStore.setState({ isAuthenticated: true, user: { id: 'user-1' }, token: 'test-token' });
 }
