@@ -2,11 +2,26 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import * as sessionsRepository from '../repositories/sessionsRepository';
 import * as routinesRepository from '../repositories/routinesRepository';
 import * as mesocyclesRepository from '../repositories/mesocyclesRepository';
-import { NotFoundError, ValidationError } from '../utils/errors';
+import { NotFoundError, POSTGRES_UNIQUE_VIOLATION, ValidationError } from '../utils/errors';
 import { summarizeHistory, summarizeSession } from './sessionMetrics';
 
 const DEFAULT_HISTORY_LIMIT = 20;
 const MAX_HISTORY_LIMIT = 100;
+
+// Missing values still fall back to 0, the way the old `Number(x) || 0` did.
+// What changes is that a number which parses but makes no physical sense is
+// now rejected instead of stored.
+function requireNonNegative(value: unknown, field: string): number {
+  if (value === undefined || value === null || value === '') return 0;
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 0;
+  if (parsed < 0) {
+    throw new ValidationError(`${field} cannot be negative`);
+  }
+
+  return parsed;
+}
 
 /**
  * Legacy one-shot path: create a closed session and its logs in a single call.
@@ -59,34 +74,65 @@ export async function startSession(db: SupabaseClient, userId: string, input: an
   }
 
   const week = input.mesocycle_week;
-  if (week !== undefined && week !== null && !Number.isInteger(Number(week))) {
+  const hasWeek = week !== undefined && week !== null;
+  if (hasWeek && !Number.isInteger(Number(week))) {
     throw new ValidationError('mesocycle_week must be an integer');
   }
 
   // Both ids come from the client. The foreign keys only prove the rows exist,
   // not that they belong to this user, and RLS does not police what an INSERT
   // may point at — so a session could otherwise be tagged with someone else's
-  // routine or mesocycle. Check ownership explicitly.
-  if (input.routine_id) {
-    const routine = await routinesRepository.findByIdAndUserId(db, input.routine_id, userId);
-    if (!routine) throw new NotFoundError('Routine not found');
-  }
-  if (input.mesocycle_id) {
-    const mesocycle = await mesocyclesRepository.findByIdAndUserId(db, input.mesocycle_id, userId);
-    if (!mesocycle) throw new NotFoundError('Mesocycle not found');
+  // routine or mesocycle. Check ownership explicitly. Neither lookup feeds the
+  // other, so they run together.
+  const [routine, mesocycle] = await Promise.all([
+    input.routine_id
+      ? routinesRepository.findByIdAndUserId(db, input.routine_id, userId)
+      : null,
+    input.mesocycle_id
+      ? mesocyclesRepository.findByIdAndUserId(db, input.mesocycle_id, userId)
+      : null,
+  ]);
+
+  if (input.routine_id && !routine) throw new NotFoundError('Routine not found');
+  if (input.mesocycle_id && !mesocycle) throw new NotFoundError('Mesocycle not found');
+
+  // The column's own CHECK only spans 1..52 (migrations/004), so a 4-week block
+  // happily accepted "week 37" and left history claiming a week the plan never
+  // had. Same range rule mesocyclesService.setCurrentWeek and getWeekPlan
+  // already enforce, worded the same way.
+  if (mesocycle && hasWeek) {
+    const parsedWeek = Number(week);
+    if (parsedWeek < 1 || parsedWeek > mesocycle.total_weeks) {
+      throw new ValidationError(
+        `Week ${parsedWeek} is outside this mesocycle (1-${mesocycle.total_weeks})`
+      );
+    }
   }
 
-  const session = await sessionsRepository.createSession(db, {
-    user_id: userId,
-    routine_id: input.routine_id ?? null,
-    mesocycle_id: input.mesocycle_id ?? null,
-    mesocycle_week: week === undefined || week === null ? null : Number(week),
-    started_at: input.started_at || new Date().toISOString(),
-    ended_at: null,
-    notes: input.notes ?? null,
-  });
+  try {
+    const session = await sessionsRepository.createSession(db, {
+      user_id: userId,
+      routine_id: input.routine_id ?? null,
+      mesocycle_id: input.mesocycle_id ?? null,
+      mesocycle_week: week === undefined || week === null ? null : Number(week),
+      started_at: input.started_at || new Date().toISOString(),
+      ended_at: null,
+      notes: input.notes ?? null,
+    });
 
-  return { session, resumed: false };
+    return { session, resumed: false };
+  } catch (error: any) {
+    // Two taps on START race past the check above, both insert, and the partial
+    // unique index (workout_sessions_one_open_per_user) rejects the loser. That
+    // is the index doing its job, not a server fault — the user's workout did
+    // start, so return the session that won instead of surfacing a 500.
+    if (error?.code !== POSTGRES_UNIQUE_VIOLATION) throw error;
+
+    const winner = await sessionsRepository.findOpenSessionByUserId(db, userId);
+    if (!winner) throw error;
+
+    return { session: winner, resumed: true };
+  }
 }
 
 export async function getActiveSession(db: SupabaseClient, userId: string) {
@@ -114,6 +160,16 @@ export async function logSet(db: SupabaseClient, userId: string, sessionId: stri
     throw new ValidationError('exercise_id is required');
   }
 
+  // `Number(x) || 0` below only ever neutralised NaN — -5 is truthy and was
+  // stored as-is, then flowed into sessionMetrics as negative volume and
+  // meaningless percentage deltas on the history screen.
+  const completedSets = requireNonNegative(log.completed_sets, 'completed_sets');
+  const completedReps = requireNonNegative(log.completed_reps, 'completed_reps');
+  const weight =
+    log.weight === undefined || log.weight === null
+      ? null
+      : requireNonNegative(log.weight, 'weight');
+
   await requireOpenSession(db, userId, sessionId);
 
   // exercise_id is not ownership-checked here, deliberately. This is the
@@ -127,11 +183,11 @@ export async function logSet(db: SupabaseClient, userId: string, sessionId: stri
     {
       workout_session_id: sessionId,
       exercise_id: log.exercise_id,
-      completed_sets: Number(log.completed_sets) || 0,
-      completed_reps: Number(log.completed_reps) || 0,
+      completed_sets: completedSets,
+      completed_reps: completedReps,
       // Null rather than 0 when unknown: statsService derives 1RM from this
       // column, and a fabricated 0 would drag a real estimate down.
-      weight: log.weight === undefined || log.weight === null ? null : Number(log.weight),
+      weight,
       logged_at: log.logged_at || new Date().toISOString(),
     },
   ]);

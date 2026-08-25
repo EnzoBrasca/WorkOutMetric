@@ -17,16 +17,23 @@ import { epley1RM } from './oneRmCalculator';
  * Before this split the screen displayed the history figure but saved into
  * one_rm, so opening config and pressing save silently replaced the user's own
  * reference with a derived one.
+ *
+ * `historyValue` therefore means "best 1RM in the last STATS_HISTORY_LIMIT
+ * sessions", not "best ever": reading the whole history made this the heaviest
+ * query in the backend and it grew without a ceiling.
  */
+export const STATS_HISTORY_LIMIT = 100;
+
 export async function getStats(db: SupabaseClient, userId: string) {
-  // 1. Fetch the user's exercises, including their reference 1RM and the set it
-  //    was estimated from.
-  const exercises = await exercisesRepository.findAllByUserId(db, userId);
+  // 1. The user's exercises (with their reference 1RM and the set it was
+  //    estimated from) and the sets logged in their most recent sessions.
+  //    Neither read feeds the other, so they overlap instead of queueing.
+  const [exercises, sessions] = await Promise.all([
+    exercisesRepository.findAllByUserId(db, userId),
+    sessionsRepository.findSessionsWithSetLogsByUserId(db, userId, STATS_HISTORY_LIMIT),
+  ]);
 
-  // 2. Fetch all completed sets inside the user's workout sessions
-  const sessions = await sessionsRepository.findSessionsWithSetLogsByUserId(db, userId);
-
-  // 3. Best 1RM implied by logged history, per exercise.
+  // 2. Best 1RM implied by logged history, per exercise.
   const historyMax: Record<string, { allTime: number; recent: number }> = {};
 
   exercises?.forEach((ex: any) => {
@@ -47,7 +54,7 @@ export async function getStats(db: SupabaseClient, userId: string) {
     });
   });
 
-  // 4. Format for the frontend UI
+  // 3. Format for the frontend UI
   return (exercises ?? []).map((ex: any) => {
     const history = historyMax[ex.id] ?? { allTime: 0, recent: 0 };
     const bestHistory = history.allTime;

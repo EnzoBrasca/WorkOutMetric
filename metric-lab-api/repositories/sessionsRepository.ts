@@ -3,7 +3,13 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 // All data access against workout_sessions + set_logs lives here. No
 // business rules — just queries that return data or throw on error.
 
-export async function findSessionsWithSetLogsByUserId(db: SupabaseClient, userId: string) {
+// Bounded by `limit` on purpose: the caller derives 1RM estimates from these
+// rows, and an unbounded read grew with every session the user ever logged.
+export async function findSessionsWithSetLogsByUserId(
+  db: SupabaseClient,
+  userId: string,
+  limit: number
+) {
   const { data, error } = await db
     .from('workout_sessions')
     .select(`
@@ -16,7 +22,8 @@ export async function findSessionsWithSetLogsByUserId(db: SupabaseClient, userId
       )
     `)
     .eq('user_id', userId)
-    .order('started_at', { ascending: false });
+    .order('started_at', { ascending: false })
+    .limit(limit);
 
   if (error) throw error;
   return data;

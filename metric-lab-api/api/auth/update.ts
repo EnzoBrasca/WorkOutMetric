@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import * as authService from '../../services/authService';
+import { respondWithError } from '../../utils/errors';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -8,20 +9,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // NOTE: this endpoint's contract passes the token in the body (not the
   // Authorization header like the other endpoints) — kept as-is on purpose.
-  const { token, user_id, new_username, new_password } = req.body;
+  // `user_id` may still arrive from installed app builds; it is ignored, since
+  // the token is what identifies the caller.
+  const { token, new_username, new_password } = req.body;
 
   if (!token) {
     return res.status(400).json({ error: 'token is required' });
   }
 
   try {
-    await authService.updateProfile(token, user_id, new_username, new_password);
+    await authService.updateProfile(token, new_username, new_password);
 
     return res.status(200).json({ success: true, message: 'Profile updated successfully' });
   } catch (error: any) {
-    if (error instanceof authService.ForbiddenError) {
-      return res.status(403).json({ error: error.message });
-    }
-    return res.status(500).json({ error: error.message });
+    return respondWithError(res, error);
   }
 }

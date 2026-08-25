@@ -1,6 +1,12 @@
-import { createClient } from '@supabase/supabase-js';
-import { supabase, getScopedClient } from '../utils/supabase';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { supabase, getScopedClient, getAdminClient } from '../utils/supabase';
 import * as usersRepository from '../repositories/usersRepository';
+import {
+  ConflictError,
+  POSTGRES_UNIQUE_VIOLATION,
+  UnauthorizedError,
+  ValidationError,
+} from '../utils/errors';
 
 // Supabase Auth requires an email format, so usernames are mapped to a
 // deterministic dummy email. Was duplicated in login.ts and register.ts —
@@ -9,11 +15,6 @@ export function buildEmailFromUsername(username: string): string {
   return `${username.toLowerCase()}@metriclab.app`;
 }
 
-// Thrown when the caller-supplied user_id doesn't match the authenticated
-// user. Kept distinct from other errors so the handler can map it to 403
-// while every other failure maps to 500 (preserves api/auth/update.ts's
-// existing status-code behavior).
-export class ForbiddenError extends Error {}
 
 export async function login(username: string, password: string) {
   const email = buildEmailFromUsername(username);
@@ -86,24 +87,48 @@ export async function register(username: string, password: string) {
   }
 
   const db = getScopedClient(authData.session.access_token);
-  const user = await usersRepository.insertUser(db, {
-    auth_id: authData.user.id,
-    username,
-  });
 
-  return { user, session: authData.session };
+  try {
+    const user = await usersRepository.insertUser(db, {
+      auth_id: authData.user.id,
+      username,
+    });
+
+    return { user, session: authData.session };
+  } catch (insertError) {
+    // The Auth account already exists at this point. Leaving it behind strands
+    // the username forever: buildEmailFromUsername is deterministic, so every
+    // later attempt to register it collides with "already registered", while
+    // login fails with "User profile not found" because public.users has no
+    // row. Deleting the Auth account is the compensating half of a transaction
+    // that spans two systems.
+    await rollbackAuthUser(authData.user.id);
+    throw insertError;
+  }
+}
+
+// A failed rollback must never replace the error that caused it — the caller
+// needs to see why the profile insert failed, not why the cleanup did.
+async function rollbackAuthUser(authId: string) {
+  try {
+    await getAdminClient().auth.admin.deleteUser(authId);
+  } catch (rollbackError) {
+    console.error('Failed to roll back orphaned auth user', authId, rollbackError);
+  }
 }
 
 export async function updateProfile(
   token: string,
-  bodyUserId: string | undefined,
   newUsername: string | undefined,
   newPassword: string | undefined
 ) {
-  // 1. Verify the token FIRST and derive the authenticated user's id from
-  //    it. Never trust `user_id` from the request body for authorization —
-  //    that was the source of the IDOR (anyone could rename another user by
-  //    guessing/knowing their UUID).
+  // Verify the token FIRST and derive the authenticated user's id from it.
+  // `user_id` from the request body is ignored entirely — it was the source of
+  // the IDOR (anyone could rename another user by knowing their UUID), and the
+  // guard that replaced it compared the body's public.users.id against this
+  // auth.users.id. Those are independent UUIDs (migrations/001), so they never
+  // matched and every profile update 403'd. The token is the only authority
+  // here, which is what the authorization filter below already relied on.
   const authClient = createClient(
     process.env.SUPABASE_URL!,
     process.env.SUPABASE_ANON_KEY!,
@@ -113,21 +138,24 @@ export async function updateProfile(
   const { data: { user }, error: authError } = await authClient.auth.getUser(token);
 
   if (authError || !user) {
-    throw new Error('Invalid token');
-  }
-
-  // `bodyUserId`, if provided, is accepted only as a redundant match-check —
-  // it is never used for the actual authorization filter.
-  if (bodyUserId && bodyUserId !== user.id) {
-    throw new ForbiddenError('user_id does not match authenticated user');
+    throw new UnauthorizedError('Invalid or expired token');
   }
 
   const authenticatedUserId = user.id;
   const db = getScopedClient(token);
 
-  // 2. Update username using the token-derived id, via the RLS-scoped client.
+  // Update username using the token-derived id, via the RLS-scoped client.
   if (newUsername) {
-    await usersRepository.updateUsernameByAuthId(db, authenticatedUserId, newUsername);
+    try {
+      await usersRepository.updateUsernameByAuthId(db, authenticatedUserId, newUsername);
+    } catch (error: any) {
+      // users.username is UNIQUE (migrations/001). Taking someone else's name
+      // is a conflict the user can resolve by picking another one, not a 500.
+      if (error?.code === POSTGRES_UNIQUE_VIOLATION) {
+        throw new ConflictError('That username is already taken');
+      }
+      throw error;
+    }
   }
 
   // 3. Update password if provided.
@@ -146,12 +174,18 @@ export async function updateProfile(
 
     if (!response.ok) {
       const errorData = (await response.json()) as { msg?: string };
-      throw new Error(errorData.msg || 'Failed to update password');
+      // Supabase rejects a password the caller chose (too short, breached,
+      // same as the current one). That is the client's problem to fix, not a
+      // server fault, so it must not surface as a 500.
+      throw new ValidationError(errorData.msg || 'Failed to update password');
     }
   }
 }
 
-export async function updatePreferences(token: string, userId: string, preferences: any) {
-  const db = getScopedClient(token);
+export async function updatePreferences(
+  db: SupabaseClient,
+  userId: string,
+  preferences: any
+) {
   await usersRepository.updatePreferencesById(db, userId, preferences);
 }

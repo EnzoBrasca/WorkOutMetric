@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getScopedClient } from '../../utils/supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { verifyTokenAndGetUser } from '../../utils/verify';
+import { respondWithError } from '../../utils/errors';
 import * as sessionsService from '../../services/sessionsService';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -9,14 +10,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   let token_user_id: string;
-  let token: string;
+  let db: SupabaseClient;
   try {
-    ({ userId: token_user_id, token } = await verifyTokenAndGetUser(req));
+    ({ userId: token_user_id, db } = await verifyTokenAndGetUser(req));
   } catch (error: any) {
-    return res.status(401).json({ error: error.message });
+    return respondWithError(res, error);
   }
-
-  const db = getScopedClient(token);
 
   const { routine_id, started_at, ended_at, logs } = req.body;
   const user_id = token_user_id; // Override with secure id

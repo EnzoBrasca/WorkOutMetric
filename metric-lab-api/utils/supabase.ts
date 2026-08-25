@@ -20,3 +20,22 @@ export function getScopedClient(token: string) {
     auth: { persistSession: false },
   });
 }
+
+/**
+ * Bypasses RLS and can administer Auth accounts. Its only caller is the
+ * registration rollback in authService — keep it that way, so this key's blast
+ * radius stays one function wide.
+ *
+ * Built on demand rather than at import time: the key is optional, and a
+ * deployment missing it must still serve every other endpoint.
+ */
+export function getAdminClient() {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY');
+  }
+
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}

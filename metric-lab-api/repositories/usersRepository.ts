@@ -14,16 +14,26 @@ export async function findByAuthId(db: SupabaseClient, authId: string) {
   return data;
 }
 
-// Used by utils/verify.ts's profile lookup — mirrors its original behavior
-// of only selecting `id` and silently ignoring a query error (the caller
-// treats a null row as "profile not found").
+/**
+ * Used by utils/verify.ts's profile lookup.
+ *
+ * A real query failure and "this user has no profile row" are different things
+ * and must stay that way. This used to discard `error` and return undefined for
+ * both, so an RLS misconfiguration or a Supabase outage surfaced to the caller
+ * as "your session is invalid" on every authenticated endpoint — hiding a real
+ * incident behind an auth error.
+ *
+ * maybeSingle rather than single: a missing row is an expected outcome here,
+ * not an error condition.
+ */
 export async function findIdByAuthId(db: SupabaseClient, authId: string) {
-  const { data } = await db
+  const { data, error } = await db
     .from('users')
     .select('id')
     .eq('auth_id', authId)
-    .single();
+    .maybeSingle();
 
+  if (error) throw error;
   return data as { id: string } | null;
 }
 

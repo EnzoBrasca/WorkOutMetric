@@ -1,5 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { verifyTokenAndGetUser } from '../../utils/verify';
+import { respondWithError } from '../../utils/errors';
 import * as authService from '../../services/authService';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -14,18 +16,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   let userId: string;
-  let token: string;
+  let db: SupabaseClient;
   try {
-    ({ userId, token } = await verifyTokenAndGetUser(req));
+    ({ userId, db } = await verifyTokenAndGetUser(req));
   } catch (error: any) {
-    return res.status(401).json({ error: error.message });
+    return respondWithError(res, error);
   }
 
   try {
-    await authService.updatePreferences(token, userId, preferences);
+    await authService.updatePreferences(db, userId, preferences);
 
     return res.status(200).json({ message: 'Preferences updated successfully' });
   } catch (error: any) {
-    return res.status(400).json({ error: error.message });
+    return respondWithError(res, error);
   }
 }

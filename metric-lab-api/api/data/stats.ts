@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getScopedClient } from '../../utils/supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { verifyTokenAndGetUser } from '../../utils/verify';
+import { respondWithError } from '../../utils/errors';
 import * as statsService from '../../services/statsService';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -9,14 +10,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   let user_id: string;
-  let token: string;
+  let db: SupabaseClient;
   try {
-    ({ userId: user_id, token } = await verifyTokenAndGetUser(req));
+    ({ userId: user_id, db } = await verifyTokenAndGetUser(req));
   } catch (error: any) {
-    return res.status(401).json({ error: error.message });
+    return respondWithError(res, error);
   }
-
-  const db = getScopedClient(token);
 
   try {
     const stats = await statsService.getStats(db, user_id);

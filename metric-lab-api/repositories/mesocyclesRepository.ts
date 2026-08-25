@@ -26,6 +26,21 @@ export async function findByIdAndUserId(db: SupabaseClient, id: string, userId: 
   return data;
 }
 
+export async function findByRoutineIdAndUserId(
+  db: SupabaseClient,
+  routineId: string,
+  userId: string
+) {
+  const { data, error } = await db
+    .from('mesocycles')
+    .select('id, name')
+    .eq('routine_id', routineId)
+    .eq('user_id', userId);
+
+  if (error) throw error;
+  return data;
+}
+
 export async function insert(db: SupabaseClient, row: Record<string, unknown>) {
   const { data, error } = await db
     .from('mesocycles')

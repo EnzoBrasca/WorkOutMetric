@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import * as exercisesRepository from '../repositories/exercisesRepository';
 import { NotFoundError, ValidationError } from '../utils/errors';
@@ -85,8 +86,9 @@ export async function setOneRm(
 
 // syncExercises is an upsert and can never remove rows, so deletion needs its
 // own explicit path — otherwise a deleted exercise reappears on the next load.
+// The removal is a soft delete: see exercisesRepository.softDeleteByIdAndUserId.
 export async function deleteExercise(db: SupabaseClient, userId: string, id: string) {
-  const deleted = await exercisesRepository.deleteByIdAndUserId(db, id, userId);
+  const deleted = await exercisesRepository.softDeleteByIdAndUserId(db, id, userId);
   return { deleted: deleted?.length ?? 0 };
 }
 
@@ -102,19 +104,20 @@ export async function syncExercises(db: SupabaseClient, userId: string, exercise
       // showed a tag the user never chose. Clients that always send a type —
       // including the Android build already in users' hands — are unaffected.
       muscle_group: ex.type || null,
-      base_weight: 0, // Optional default
+      // base_weight is deliberately absent. It used to be pinned to 0 on every
+      // sync, silently overwriting whatever the row held. Nothing in the API or
+      // the app ever reads the column, so the write was pure destruction.
       sets: ex.sets,
       week: ex.week,
       weight: ex.weight,
     };
 
-    // Only set `id` when the client sent a real UUID. Assigning `undefined`
-    // here is not the same as omitting the key: postgrest-js normalises the
-    // column set across rows and sends an explicit null, which fails the
-    // NOT NULL primary key instead of falling back to gen_random_uuid().
-    if (ex.id && ex.id.length === 36) {
-      row.id = ex.id;
-    }
+    // Every row carries an id, even a brand-new exercise. postgrest-js builds
+    // the upsert's column set from the union of the rows' keys, so a row that
+    // omitted `id` while a sibling carried one got an explicit null written
+    // into it — failing the NOT NULL primary key and taking the whole batch
+    // down. Minting the UUID here keeps the column set identical across rows.
+    row.id = ex.id && ex.id.length === 36 ? ex.id : randomUUID();
 
     return row;
   });

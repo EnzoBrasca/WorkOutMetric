@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getScopedClient } from '../../utils/supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { verifyTokenAndGetUser } from '../../utils/verify';
 import { respondWithError } from '../../utils/errors';
 import * as sessionsService from '../../services/sessionsService';
@@ -22,14 +22,12 @@ import * as sessionsService from '../../services/sessionsService';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   let user_id: string;
-  let token: string;
+  let db: SupabaseClient;
   try {
-    ({ userId: user_id, token } = await verifyTokenAndGetUser(req));
+    ({ userId: user_id, db } = await verifyTokenAndGetUser(req));
   } catch (error: any) {
-    return res.status(401).json({ error: error.message });
+    return respondWithError(res, error);
   }
-
-  const db = getScopedClient(token);
 
   // The rest of the file safely uses user_id from the token, ignoring req.query.user_id
   if (req.method === 'GET') {
