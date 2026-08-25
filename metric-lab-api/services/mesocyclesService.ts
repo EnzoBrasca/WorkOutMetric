@@ -8,11 +8,20 @@ import {
   planAllWeeks,
   planWeek,
 } from './mesocycleCalculator';
+import { anchorForWeek, currentWeekFor, withCurrentWeek } from './weekAnchor';
 
 const MAX_WEEKS = 52;
 
-export async function listMesocycles(db: SupabaseClient, userId: string) {
-  return mesocyclesRepository.findAllByUserId(db, userId);
+// `now` is threaded through every entry point rather than read from the global
+// clock inside them, so the whole week-derivation path is testable — same shape
+// as mesocycleCalculator.
+export async function listMesocycles(
+  db: SupabaseClient,
+  userId: string,
+  now: Date = new Date()
+) {
+  const rows = await mesocyclesRepository.findAllByUserId(db, userId);
+  return (rows ?? []).map((row: any) => withCurrentWeek(row, now));
 }
 
 function readNumber(value: unknown, fallback: number): number {
@@ -51,17 +60,18 @@ function validateConfig(config: MesocycleConfig) {
   }
 }
 
-export async function createMesocycle(db: SupabaseClient, userId: string, input: any) {
-  if (!input?.routine_id) {
-    throw new ValidationError('routine_id is required');
-  }
-
-  // Confirm the routine is the caller's before binding a mesocycle to it. RLS
-  // would block a foreign routine anyway, but this returns a clear 404 instead
-  // of an opaque constraint error.
-  const routine = await routinesRepository.findByIdAndUserId(db, input.routine_id, userId);
-  if (!routine) {
-    throw new NotFoundError('Routine not found');
+export async function createMesocycle(
+  db: SupabaseClient,
+  userId: string,
+  input: any,
+  now: Date = new Date()
+) {
+  // A mesocycle used to borrow the name of the routine it was bound to. It
+  // covers every routine now (migration 010), so there is nothing left to
+  // borrow and the user has to name the block themselves.
+  const name = typeof input?.name === 'string' ? input.name.trim() : '';
+  if (!name) {
+    throw new ValidationError('name is required');
   }
 
   const deloadEnabled = Boolean(input.deload_enabled);
@@ -76,37 +86,70 @@ export async function createMesocycle(db: SupabaseClient, userId: string, input:
 
   validateConfig(config);
 
-  return mesocyclesRepository.insert(db, {
+  const created = await mesocyclesRepository.insert(db, {
     user_id: userId,
-    routine_id: input.routine_id,
-    name: input.name || routine.name,
+    name,
     ...config,
-    current_week: 1,
+    // A brand-new block starts at week 1 in the calendar week it was created,
+    // and advances by itself from the next Monday on. See weekAnchor.ts.
+    ...anchorForWeek(1, now),
   });
+
+  return withCurrentWeek(created, now);
 }
 
-// routine_exercises embeds the exercise row; postgrest returns it as an object
-// for a to-one relationship but as an array when it cannot infer cardinality,
-// so accept both rather than silently planning zero exercises.
-function toPlannedInput(row: any): PlannedExerciseInput {
-  const exercise = Array.isArray(row.exercises) ? row.exercises[0] : row.exercises;
+/**
+ * Collapses the user's routine memberships into one target per exercise.
+ *
+ * An exercise in both PUSH A and PUSH B is still ONE exercise with one 1RM, so
+ * it gets one target; the routines it belongs to are merged into routine_ids so
+ * the client can still show it under whichever routine it is displaying. The
+ * first row's target_sets wins — two routines disagreeing about set count is a
+ * routine-level decision the plan has no business arbitrating, and picking the
+ * first keeps the result stable instead of depending on row order semantics.
+ *
+ * postgrest returns an embedded to-one relationship as an object, but as an
+ * array when it cannot infer cardinality, so both shapes are accepted rather
+ * than silently planning zero exercises.
+ */
+export function toPlannedInputs(rows: any[]): PlannedExerciseInput[] {
+  const byExerciseId = new Map<string, PlannedExerciseInput>();
 
-  return {
-    exercise_id: row.exercise_id,
-    name: exercise?.name ?? 'UNKNOWN',
-    target_sets: row.target_sets ?? 3,
-    one_rm: exercise?.one_rm == null ? null : Number(exercise.one_rm),
-  };
+  for (const row of rows ?? []) {
+    const exercise = Array.isArray(row.exercises) ? row.exercises[0] : row.exercises;
+    const existing = byExerciseId.get(row.exercise_id);
+
+    if (existing) {
+      if (row.routine_id && !existing.routine_ids!.includes(row.routine_id)) {
+        existing.routine_ids!.push(row.routine_id);
+      }
+      continue;
+    }
+
+    byExerciseId.set(row.exercise_id, {
+      exercise_id: row.exercise_id,
+      name: exercise?.name ?? 'UNKNOWN',
+      target_sets: row.target_sets ?? 3,
+      one_rm: exercise?.one_rm == null ? null : Number(exercise.one_rm),
+      routine_ids: row.routine_id ? [row.routine_id] : [],
+    });
+  }
+
+  return [...byExerciseId.values()];
 }
 
+// The plan covers every exercise in AT LEAST ONE of the user's routines. An
+// exercise in none of them deliberately gets no target: the app tells the user
+// so (NOT_IN_ANY_ROUTINE) rather than inventing a prescription for something
+// they never planned to train.
 async function loadMesocycleAndExercises(db: SupabaseClient, userId: string, id: string) {
   const mesocycle = await mesocyclesRepository.findByIdAndUserId(db, id, userId);
   if (!mesocycle) {
     throw new NotFoundError('Mesocycle not found');
   }
 
-  const rows = await routinesRepository.findExercisesByRoutineId(db, mesocycle.routine_id);
-  return { mesocycle, exercises: (rows ?? []).map(toPlannedInput) };
+  const rows = await routinesRepository.findExercisesByUserId(db, userId);
+  return { mesocycle, exercises: toPlannedInputs(rows ?? []) };
 }
 
 /**
@@ -117,10 +160,11 @@ export async function getWeekPlan(
   db: SupabaseClient,
   userId: string,
   id: string,
-  requestedWeek?: number
+  requestedWeek?: number,
+  now: Date = new Date()
 ) {
   const { mesocycle, exercises } = await loadMesocycleAndExercises(db, userId, id);
-  const week = requestedWeek ?? mesocycle.current_week;
+  const week = requestedWeek ?? currentWeekFor(mesocycle, now);
 
   if (!Number.isInteger(week) || week < 1 || week > mesocycle.total_weeks) {
     throw new ValidationError(
@@ -128,20 +172,41 @@ export async function getWeekPlan(
     );
   }
 
-  return { mesocycle, plan: planWeek(mesocycle as MesocycleConfig, exercises, week) };
+  return {
+    mesocycle: withCurrentWeek(mesocycle, now),
+    plan: planWeek(mesocycle as MesocycleConfig, exercises, week),
+  };
 }
 
 /** Every week at once, for previewing the whole block. */
-export async function getFullPlan(db: SupabaseClient, userId: string, id: string) {
-  const { mesocycle, exercises } = await loadMesocycleAndExercises(db, userId, id);
-  return { mesocycle, weeks: planAllWeeks(mesocycle as MesocycleConfig, exercises) };
-}
-
-export async function setCurrentWeek(
+export async function getFullPlan(
   db: SupabaseClient,
   userId: string,
   id: string,
-  week: number
+  now: Date = new Date()
+) {
+  const { mesocycle, exercises } = await loadMesocycleAndExercises(db, userId, id);
+  return {
+    mesocycle: withCurrentWeek(mesocycle, now),
+    weeks: planAllWeeks(mesocycle as MesocycleConfig, exercises),
+  };
+}
+
+/**
+ * Sets the training week by hand -- absolute, not a step.
+ *
+ * This does not write a week number anywhere: it moves the ANCHOR to
+ * (week, this Argentine Monday). The effect is that the block reads as `week`
+ * for the rest of the current calendar week and then keeps advancing on its
+ * own from next Monday, which is what makes onboarding a block already in
+ * progress work without turning off auto-advance.
+ */
+export async function setWeek(
+  db: SupabaseClient,
+  userId: string,
+  id: string,
+  week: number,
+  now: Date = new Date()
 ) {
   const mesocycle = await mesocyclesRepository.findByIdAndUserId(db, id, userId);
   if (!mesocycle) {
@@ -154,11 +219,15 @@ export async function setCurrentWeek(
     );
   }
 
-  const updated = await mesocyclesRepository.updateByIdAndUserId(db, id, userId, {
-    current_week: week,
-  });
+  const updated = await mesocyclesRepository.updateByIdAndUserId(
+    db,
+    id,
+    userId,
+    anchorForWeek(week, now)
+  );
 
-  return updated?.[0];
+  const row = updated?.[0];
+  return row ? withCurrentWeek(row, now) : row;
 }
 
 export async function deleteMesocycle(db: SupabaseClient, userId: string, id: string) {

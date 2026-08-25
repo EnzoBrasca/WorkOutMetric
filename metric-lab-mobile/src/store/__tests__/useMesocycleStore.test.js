@@ -59,6 +59,22 @@ describe('useMesocycleStore.setCurrentWeek', () => {
     expect(useMesocycleStore.getState().plan).toEqual(INITIAL_PLAN);
   });
 
+  // The backend advances the week on its own every Monday from a stored
+  // anchor; this PATCH is the absolute override, so it sends `week`, not the
+  // old `current_week` counter it used to increment.
+  it('sends the week as an absolute override', async () => {
+    global.fetch
+      .mockResolvedValueOnce(okResponse({ mesocycle: { id: 'meso-1', current_week: 3 } }))
+      .mockResolvedValueOnce(okResponse({ plan: { week: 3 } }));
+
+    await useMesocycleStore.getState().setCurrentWeek(3);
+
+    const [url, options] = global.fetch.mock.calls[0];
+    expect(url).toContain('/mesocycles?id=meso-1');
+    expect(options.method).toBe('PATCH');
+    expect(JSON.parse(options.body)).toEqual({ week: 3 });
+  });
+
   it('adopts the server response and refreshes the plan on success', async () => {
     const updatedMesocycle = { id: 'meso-1', name: 'Block A', current_week: 2 };
     const newPlan = { week: 2, targets: [{ exerciseId: 'ex-1', targetWeight: 84 }] };

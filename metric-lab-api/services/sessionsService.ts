@@ -98,7 +98,7 @@ export async function startSession(db: SupabaseClient, userId: string, input: an
 
   // The column's own CHECK only spans 1..52 (migrations/004), so a 4-week block
   // happily accepted "week 37" and left history claiming a week the plan never
-  // had. Same range rule mesocyclesService.setCurrentWeek and getWeekPlan
+  // had. Same range rule mesocyclesService.setWeek and getWeekPlan
   // already enforce, worded the same way.
   if (mesocycle && hasWeek) {
     const parsedWeek = Number(week);

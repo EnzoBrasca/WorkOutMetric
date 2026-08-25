@@ -69,20 +69,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  // Advancing the week is the one field the user changes as the block runs.
+  // Setting the week is the one field the user changes as the block runs.
+  //
+  // This is ABSOLUTE, not a step: the week normally advances on its own every
+  // Monday 00:00 Argentina time (services/weekAnchor.ts), and this is the
+  // override for a user onboarding a block they started outside the app. It
+  // re-anchors rather than freezing, so auto-advance resumes from here.
   if (req.method === 'PATCH') {
     const id = (req.query.id as string) || req.body?.id;
     if (!id) {
       return res.status(400).json({ error: 'id is required' });
     }
 
-    const week = Number(req.body?.current_week);
+    const week = Number(req.body?.week);
     if (!Number.isFinite(week)) {
-      return res.status(400).json({ error: 'current_week is required' });
+      return res.status(400).json({ error: 'week is required' });
     }
 
     try {
-      const mesocycle = await mesocyclesService.setCurrentWeek(db, user_id, id, week);
+      const mesocycle = await mesocyclesService.setWeek(db, user_id, id, week);
       return res.status(200).json({ mesocycle });
     } catch (error: any) {
       return respondWithError(res, error);

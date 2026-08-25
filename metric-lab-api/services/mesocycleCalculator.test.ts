@@ -26,8 +26,8 @@ const config = (overrides: Partial<MesocycleConfig> = {}): MesocycleConfig => ({
 });
 
 const exercises: PlannedExerciseInput[] = [
-  { exercise_id: 'squat-id', name: 'BARBELL SQUAT', target_sets: 4, one_rm: 140 },
-  { exercise_id: 'bench-id', name: 'BENCH PRESS', target_sets: 3, one_rm: 100 },
+  { exercise_id: 'squat-id', name: 'BARBELL SQUAT', target_sets: 4, one_rm: 140, routine_ids: ['legs'] },
+  { exercise_id: 'bench-id', name: 'BENCH PRESS', target_sets: 3, one_rm: 100, routine_ids: ['push', 'upper'] },
 ];
 
 describe('repsForPercent', () => {
@@ -140,6 +140,7 @@ describe('planWeek', () => {
         name: 'BARBELL SQUAT',
         targetSets: 4,
         targetReps: 16,
+        routineIds: ['legs'],
         targetWeight: 85,
         oneRm: 140,
         needsOneRm: false,
@@ -149,6 +150,7 @@ describe('planWeek', () => {
         name: 'BENCH PRESS',
         targetSets: 3,
         targetReps: 16,
+        routineIds: ['push', 'upper'],
         targetWeight: 60,
         oneRm: 100,
         needsOneRm: false,

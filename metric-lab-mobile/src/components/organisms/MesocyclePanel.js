@@ -4,10 +4,21 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import WeekSelector from '../molecules/WeekSelector';
 
-// Sits above the exercise list. With no active mesocycle it just prompts the
-// user to start one, so a user who never touches this feature never sees
-// anything different from before.
-export default function MesocyclePanel({ activeMesocycle, plan, isPlanLoading, onStartPress, onChangeWeek, onEndPress, onManagePress, hasMesocycles }) {
+// Sits above the exercise list, and does exactly two things now: show which
+// week of the block is running (and let the user move between weeks), plus one
+// small control to activate or deactivate a mesocycle.
+//
+// Creating a block, and managing past ones, moved to ConfigScreen — Train is
+// for training. The activate control stays because a block ending mid-workout
+// should not send the user to another tab to start the next one.
+export default function MesocyclePanel({
+  activeMesocycle,
+  plan,
+  isPlanLoading,
+  onChangeWeek,
+  onEndPress,
+  onActivatePress,
+}) {
   const t = useTranslation();
   const { colors, fonts } = useTheme();
   const styles = getStyles(colors, fonts);
@@ -15,36 +26,28 @@ export default function MesocyclePanel({ activeMesocycle, plan, isPlanLoading, o
   if (!activeMesocycle) {
     return (
       <View style={styles.emptyContainer}>
-        <TouchableOpacity onPress={onStartPress} activeOpacity={0.8} style={styles.emptyMain}>
-          <Text style={styles.emptyLabel}>{t("NO_ACTIVE_MESOCYCLE")}</Text>
-          <Text style={styles.emptyAction}>{t("START_MESOCYCLE")}</Text>
+        <Text style={styles.emptyLabel}>{t('NO_ACTIVE_MESOCYCLE')}</Text>
+        <TouchableOpacity onPress={onActivatePress} testID="mesocycle-activate">
+          <Text style={styles.emptyAction}>{t('ACTIVATE_MESOCYCLE')}</Text>
         </TouchableOpacity>
-        {/* Only offered once there is something to go back to. */}
-        {hasMesocycles ? (
-          <TouchableOpacity onPress={onManagePress}>
-            <Text style={styles.manageText}>{t("PAST_MESOCYCLES")}</Text>
-          </TouchableOpacity>
-        ) : null}
       </View>
     );
   }
 
   // Fall back to the mesocycle's own current_week while the plan for it is
-  // still loading, so the selector never renders blank.
+  // still loading, so the selector never renders blank. Both are derived from
+  // the same anchor server-side, so they cannot disagree for long.
   const currentWeek = plan?.week ?? activeMesocycle.current_week;
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.name} numberOfLines={1}>{activeMesocycle.name}</Text>
-        <View style={styles.headerActions}>
-          <TouchableOpacity onPress={onManagePress}>
-            <Text style={styles.manageText}>{t("PAST_MESOCYCLES")}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={onEndPress}>
-            <Text style={styles.endText}>{t("END_MESOCYCLE")}</Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.name} numberOfLines={1} ellipsizeMode="tail">
+          {activeMesocycle.name}
+        </Text>
+        <TouchableOpacity onPress={onEndPress} testID="mesocycle-end">
+          <Text style={styles.endText}>{t('END_MESOCYCLE')}</Text>
+        </TouchableOpacity>
       </View>
 
       <WeekSelector
@@ -67,22 +70,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginBottom: 16,
-  },
-  emptyMain: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    flexShrink: 0,
-  },
-  manageText: {
-    fontFamily: fonts.medium,
-    fontSize: 12,
-    color: colors.textSecondary,
-    textDecorationLine: 'underline',
   },
   emptyLabel: {
     fontFamily: fonts.medium,
@@ -122,5 +109,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     fontSize: 12,
     color: colors.danger,
     textDecorationLine: 'underline',
+    flexShrink: 0,
   },
 });

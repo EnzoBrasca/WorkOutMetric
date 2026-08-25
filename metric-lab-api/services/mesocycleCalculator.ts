@@ -28,6 +28,13 @@ export interface PlannedExerciseInput {
   name: string;
   target_sets: number;
   one_rm: number | null;
+  /**
+   * Every routine of the user's this exercise belongs to. A mesocycle covers
+   * all of them at once, so one exercise gets ONE target no matter how many
+   * routines share it; this is what lets the client group the flat plan by the
+   * routine it is currently showing.
+   */
+  routine_ids?: string[];
 }
 
 export interface PlannedExercise {
@@ -35,6 +42,8 @@ export interface PlannedExercise {
   name: string;
   targetSets: number;
   targetReps: number;
+  /** Routines this target applies to — see PlannedExerciseInput.routine_ids. */
+  routineIds: string[];
   /** null when the exercise has no 1RM on record yet — the client must ask for one. */
   targetWeight: number | null;
   oneRm: number | null;
@@ -157,6 +166,7 @@ export function planWeek(
         name: ex.name,
         targetSets: ex.target_sets,
         targetReps,
+        routineIds: ex.routine_ids ?? [],
         targetWeight: oneRm === null ? null : targetWeightFor(oneRm, percent),
         oneRm,
         needsOneRm: oneRm === null,

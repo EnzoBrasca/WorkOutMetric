@@ -1,7 +1,6 @@
 import { useTranslation } from '../../i18n';
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Modal, TextInput, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/useTheme';
 import Button from '../atoms/Button';
@@ -15,14 +14,16 @@ const DEFAULT_DELOAD_PCT = '50';
 // expose the increment field below so the ramp doesn't have to be guessed.
 const CUSTOM_INCREMENT_THRESHOLD = 3;
 
-export default function MesocycleModal({ visible, onClose, onSave, routines, isSaving }) {
+// Creating a mesocycle lives on ConfigScreen. It is not bound to a routine any
+// more (it covers all of them), so there is no routine to pick and no routine
+// name to fall back on — the block has to be named here.
+export default function MesocycleModal({ visible, onClose, onSave, isSaving }) {
   const t = useTranslation();
   const { colors, fonts } = useTheme();
   const insets = useSafeAreaInsets();
   const styles = getStyles(colors, fonts);
 
   const [name, setName] = useState('');
-  const [routineId, setRoutineId] = useState('');
   const [totalWeeks, setTotalWeeks] = useState(DEFAULT_TOTAL_WEEKS);
   const [startPct, setStartPct] = useState(DEFAULT_START_PCT);
   const [incrementPct, setIncrementPct] = useState(DEFAULT_INCREMENT_PCT);
@@ -34,7 +35,6 @@ export default function MesocycleModal({ visible, onClose, onSave, routines, isS
   useEffect(() => {
     if (visible) {
       setName('');
-      setRoutineId(routines[0]?.id || '');
       setTotalWeeks(DEFAULT_TOTAL_WEEKS);
       setStartPct(DEFAULT_START_PCT);
       setIncrementPct(DEFAULT_INCREMENT_PCT);
@@ -43,14 +43,15 @@ export default function MesocycleModal({ visible, onClose, onSave, routines, isS
       setDeloadPct(DEFAULT_DELOAD_PCT);
       setError('');
     }
-  }, [visible, routines]);
+  }, [visible]);
 
   const totalWeeksNum = parseInt(totalWeeks, 10) || 0;
   const showIncrementField = totalWeeksNum > CUSTOM_INCREMENT_THRESHOLD;
 
   const handleSave = async () => {
-    if (!routineId) {
-      setError(t("ERROR_ROUTINE_REQUIRED"));
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setError(t("ERROR_MESOCYCLE_NAME_REQUIRED"));
       return;
     }
 
@@ -61,8 +62,7 @@ export default function MesocycleModal({ visible, onClose, onSave, routines, isS
     }
 
     const payload = {
-      routine_id: routineId,
-      name: name.trim() || undefined,
+      name: trimmedName,
       total_weeks: totalWeeksNum || 4,
       start_pct: startPctNum,
       deload_enabled: deloadEnabled,
@@ -103,31 +103,10 @@ export default function MesocycleModal({ visible, onClose, onSave, routines, isS
                 style={styles.input}
                 value={name}
                 onChangeText={setName}
-                placeholder="e.g. HYPERTROPHY BLOCK"
+                placeholder={t("MESOCYCLE_NAME_PLACEHOLDER")}
                 placeholderTextColor={colors.textSecondary}
                 maxLength={40}
               />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>{t("ROUTINE")}</Text>
-              {routines.length === 0 ? (
-                <Text style={styles.emptyText}>{t("NO_ROUTINES_AVAILABLE")}</Text>
-              ) : (
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={routineId}
-                    onValueChange={(itemValue) => setRoutineId(itemValue)}
-                    style={styles.picker}
-                    itemStyle={{ color: colors.textPrimary }}
-                    dropdownIconColor={colors.primary}
-                  >
-                    {routines.map((routine) => (
-                      <Picker.Item key={routine.id} label={routine.name} value={routine.id} />
-                    ))}
-                  </Picker>
-                </View>
-              )}
             </View>
 
             <View style={styles.inputGroup}>
@@ -213,7 +192,6 @@ export default function MesocycleModal({ visible, onClose, onSave, routines, isS
                 onPress={handleSave}
                 variant="primary"
                 loading={isSaving}
-                disabled={routines.length === 0}
                 style={styles.flexBtn}
               />
             </View>
@@ -272,22 +250,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     borderColor: colors.borderAlt,
     backgroundColor: colors.background,
     padding: 12,
-  },
-  emptyText: {
-    fontFamily: fonts.regular,
-    fontSize: 14,
-    color: colors.danger,
-  },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    backgroundColor: colors.background,
-    overflow: 'hidden',
-  },
-  picker: {
-    height: 50,
-    color: colors.textPrimary,
-    backgroundColor: colors.background,
   },
   settingRow: {
     marginBottom: 16,
