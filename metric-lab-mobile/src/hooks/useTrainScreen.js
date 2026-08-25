@@ -10,8 +10,8 @@ import { useRestTimer } from './useRestTimer';
 export function useTrainScreen() {
   const t = useTranslation();
   const {
-    activeTab,
-    setActiveTab,
+    activeRoutineId,
+    setActiveRoutineId,
     exercises,
     logSession,
     isLoading,
@@ -28,18 +28,13 @@ export function useTrainScreen() {
     routines,
     activeRoutineDetail,
     isLoadingRoutineDetail,
-    isLoading: isMesocycleSaving,
     loadMesocycles,
     loadRoutines,
-    loadRoutineForTab,
-    createRoutineForTab,
-    ensureRoutineForTab,
+    loadRoutineDetail,
     refreshPlan,
-    createMesocycle,
     selectActiveMesocycle,
     setCurrentWeek,
     setOneRm,
-    deleteMesocycle,
     addExerciseToRoutine,
     removeExerciseFromRoutine,
     isSavingRoutine,
@@ -81,13 +76,31 @@ export function useTrainScreen() {
     }, [loadMesocycles, loadRoutines, loadExercises, refreshActiveSession, refreshPlan, activeMesocycleId])
   );
 
-  // Resolves the active tab to its routine whenever the tab changes or the
-  // routines list refreshes (e.g. right after creating the missing one).
+  // Keeps the selection pointing at a routine that actually exists: nothing
+  // selected yet (fresh install, or the first routine just created), or a
+  // routine deleted from the Routines tab while it was the one on screen.
   useEffect(() => {
-    loadRoutineForTab(activeTab);
-  }, [activeTab, routines, loadRoutineForTab]);
+    if (routines.length === 0) {
+      if (activeRoutineId) setActiveRoutineId(null);
+      return;
+    }
+    if (!routines.some((routine) => routine.id === activeRoutineId)) {
+      setActiveRoutineId(routines[0].id);
+    }
+  }, [routines, activeRoutineId, setActiveRoutineId]);
 
-  const hasRoutineForTab = Boolean(activeRoutineDetail);
+  // Loads the selected routine's membership whenever the selection changes or
+  // the routines list refreshes.
+  useEffect(() => {
+    loadRoutineDetail(activeRoutineId);
+  }, [activeRoutineId, routines, loadRoutineDetail]);
+
+  const activeRoutine = useMemo(
+    () => routines.find((routine) => routine.id === activeRoutineId) || null,
+    [routines, activeRoutineId]
+  );
+
+  const hasRoutines = routines.length > 0;
   const routineMembership = activeRoutineDetail?.exercises ?? [];
 
   const exerciseCatalogById = useMemo(
@@ -96,8 +109,10 @@ export function useTrainScreen() {
   );
 
   // Overlays each exercise with its mesocycle-calculated target when one
-  // exists for it. Exercises outside the active mesocycle's routine (or when
-  // there is no active mesocycle) are left untouched.
+  // exists for it. The plan now covers every exercise in ANY of the user's
+  // routines, deduplicated, so this map is looked up by exercise id and the
+  // routine currently on screen decides which of them are rendered. Exercises
+  // in no routine at all (or when there is no active mesocycle) are untouched.
   const planByExerciseId = useMemo(() => {
     if (!plan) return {};
     const map = {};
@@ -120,7 +135,7 @@ export function useTrainScreen() {
         const base = catalogExercise || {
           id: membership.exercise_id,
           name: nested.name || t('UNKNOWN_EXERCISE'),
-          type: nested.muscle_group || activeTab,
+          type: nested.muscle_group || activeRoutine?.type || null,
           weight: '0.0',
           sets: `${membership.target_sets}x${membership.target_reps}`,
           week: 'WK 1/4',
@@ -134,7 +149,7 @@ export function useTrainScreen() {
           targetReps: membership.target_reps,
         };
       }),
-    [routineMembership, exerciseCatalogById, planByExerciseId, activeTab, t]
+    [routineMembership, exerciseCatalogById, planByExerciseId, activeRoutine, t]
   );
 
   // Catalog exercises available to add: same type as the tab, not already a
@@ -167,8 +182,9 @@ export function useTrainScreen() {
     [displayExercises, sessionExerciseId]
   );
 
-  const [mesocycleModalVisible, setMesocycleModalVisible] = useState(false);
-  const [mesocycleListVisible, setMesocycleListVisible] = useState(false);
+  // Train only picks WHICH block is active; creating and deleting them lives
+  // on ConfigScreen.
+  const [mesocyclePickerVisible, setMesocyclePickerVisible] = useState(false);
 
   const handleOpenAdd = () => {
     setEditingExercise(null);
@@ -191,17 +207,20 @@ export function useTrainScreen() {
   // on (routine_id, exercise_id), so "add" and "change this exercise's
   // target" are the same request, just with a different starting point.
   const handleSave = async ({ exerciseId, targetSets, targetReps }) => {
-    // Adding is what assigns push or pull, so the routine is created on demand
-    // rather than being a prerequisite the user has to satisfy first.
-    const routine = activeRoutineDetail ?? (await ensureRoutineForTab(activeTab)).routine;
-    if (!routine) return;
+    // Routines are created explicitly on the Routines tab now, so there is
+    // nothing to create on demand here — without a selected routine there is
+    // simply nothing to add to.
+    const routineId = activeRoutineDetail?.id ?? activeRoutineId;
+    if (!routineId) return;
 
-    await addExerciseToRoutine(routine.id, exerciseId, targetSets, targetReps);
+    await addExerciseToRoutine(routineId, exerciseId, targetSets, targetReps);
 
-    // Keep the exercise's own push/pull tag in step with the routine it was
-    // just assigned to: /data/stats reports it and the catalog displays it.
-    if (exerciseCatalogById[exerciseId]?.type !== activeTab) {
-      updateExercise(exerciseId, { type: activeTab });
+    // Keep the exercise's own type tag in step with the routine it was just
+    // assigned to — /data/stats reports it and the catalog displays it. An
+    // untagged routine leaves the exercise's tag alone rather than blanking it.
+    const routineType = activeRoutine?.type;
+    if (routineType && exerciseCatalogById[exerciseId]?.type !== routineType) {
+      updateExercise(exerciseId, { type: routineType });
     }
   };
 
@@ -209,8 +228,6 @@ export function useTrainScreen() {
     if (!activeRoutineDetail) return;
     removeExerciseFromRoutine(activeRoutineDetail.id, exerciseId);
   };
-
-  const handleCreateRoutineForTab = () => createRoutineForTab(activeTab);
 
   const handleOpenSession = (exercise) => {
     setSessionExerciseId(exercise.id);
@@ -232,26 +249,16 @@ export function useTrainScreen() {
     }
   };
 
-  const handleOpenMesocycleModal = () => setMesocycleModalVisible(true);
-  const handleCloseMesocycleModal = () => setMesocycleModalVisible(false);
-
-  const handleOpenMesocycleList = () => setMesocycleListVisible(true);
-  const handleCloseMesocycleList = () => setMesocycleListVisible(false);
+  const handleOpenMesocyclePicker = () => setMesocyclePickerVisible(true);
+  const handleCloseMesocyclePicker = () => setMesocyclePickerVisible(false);
 
   const handleSelectMesocycle = (id) => {
-    setMesocycleListVisible(false);
+    setMesocyclePickerVisible(false);
     selectActiveMesocycle(id);
   };
 
-  const handleDeleteMesocycle = (id) => deleteMesocycle(id);
-
-  // Swaps the list for the creation form rather than stacking two modals.
-  const handleCreateFromList = () => {
-    setMesocycleListVisible(false);
-    setMesocycleModalVisible(true);
-  };
-
-  const handleCreateMesocycle = (payload) => createMesocycle(payload);
+  // A real override, not a preview: the backend re-anchors the block to this
+  // week and keeps advancing from there every Monday.
   const handleChangeWeek = (week) => setCurrentWeek(week);
   const handleEndMesocycle = () => selectActiveMesocycle(null);
   const handleSetOneRm = (exerciseId, oneRm) => setOneRm(exerciseId, oneRm);
@@ -269,12 +276,12 @@ export function useTrainScreen() {
   };
 
   return {
-    activeTab,
-    setActiveTab,
+    activeRoutineId,
+    setActiveRoutineId,
+    activeRoutine,
     exercises: displayExercises,
     isLoading: isLoading || isLoadingRoutineDetail,
-    hasRoutineForTab,
-    handleCreateRoutineForTab,
+    hasRoutines,
     catalogOptionsForAdd,
 
     modalVisible,
@@ -298,19 +305,12 @@ export function useTrainScreen() {
     plan,
     isPlanLoading,
     isSettingOneRm,
-    isMesocycleSaving,
     isSavingRoutine,
     routines,
-    mesocycleModalVisible,
-    mesocycleListVisible,
-    handleOpenMesocycleModal,
-    handleCloseMesocycleModal,
-    handleOpenMesocycleList,
-    handleCloseMesocycleList,
+    mesocyclePickerVisible,
+    handleOpenMesocyclePicker,
+    handleCloseMesocyclePicker,
     handleSelectMesocycle,
-    handleDeleteMesocycle,
-    handleCreateFromList,
-    handleCreateMesocycle,
     handleChangeWeek,
     handleEndMesocycle,
     handleSetOneRm,

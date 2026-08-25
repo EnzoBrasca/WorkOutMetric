@@ -4,14 +4,14 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '../theme/useTheme';
 
-import PushPullTabs from '../components/molecules/PushPullTabs';
+import RoutineTabs from '../components/molecules/RoutineTabs';
 import ExerciseCard from '../components/molecules/ExerciseCard';
 import RoutineExerciseModal from '../components/organisms/RoutineExerciseModal';
 import SessionModal from '../components/organisms/SessionModal';
 import MesocyclePanel from '../components/organisms/MesocyclePanel';
-import MesocycleModal from '../components/organisms/MesocycleModal';
-import MesocycleListModal from '../components/organisms/MesocycleListModal';
-import ActiveSessionBar from '../components/organisms/ActiveSessionBar';
+import MesocyclePickerModal from '../components/organisms/MesocyclePickerModal';
+import WorkoutSessionView from '../components/organisms/WorkoutSessionView';
+import Button from '../components/atoms/Button';
 import AsyncState, { shouldRenderState } from '../components/molecules/AsyncState';
 import { useTrainScreen } from '../hooks/useTrainScreen';
 
@@ -21,12 +21,11 @@ export default function TrainScreen() {
   const styles = getStyles(colors, fonts);
 
   const {
-    activeTab,
-    setActiveTab,
+    activeRoutineId,
+    setActiveRoutineId,
     exercises,
     isLoading,
-    hasRoutineForTab,
-    handleCreateRoutineForTab,
+    hasRoutines,
     catalogOptionsForAdd,
 
     modalVisible,
@@ -50,19 +49,12 @@ export default function TrainScreen() {
     plan,
     isPlanLoading,
     isSettingOneRm,
-    isMesocycleSaving,
     isSavingRoutine,
     routines,
-    mesocycleModalVisible,
-    mesocycleListVisible,
-    handleOpenMesocycleModal,
-    handleCloseMesocycleModal,
-    handleOpenMesocycleList,
-    handleCloseMesocycleList,
+    mesocyclePickerVisible,
+    handleOpenMesocyclePicker,
+    handleCloseMesocyclePicker,
     handleSelectMesocycle,
-    handleDeleteMesocycle,
-    handleCreateFromList,
-    handleCreateMesocycle,
     handleChangeWeek,
     handleEndMesocycle,
     handleSetOneRm,
@@ -76,43 +68,72 @@ export default function TrainScreen() {
     restTimerSeconds,
   } = useTrainScreen();
 
+  const activeRoutineName = routines.find((r) => r.id === activeRoutineId)?.name;
+
+  // While a workout is open the session view owns the whole screen (App.js
+  // hides the tab bar too). Routine tabs, the mesocycle panel and the
+  // add-exercise button are setup, not training — they come back on finish.
+  if (activeSummary) {
+    return (
+      <View style={styles.container}>
+        <WorkoutSessionView
+          routineName={activeRoutineName}
+          exercises={exercises}
+          activeSummary={activeSummary}
+          isFinishing={isFinishingSession}
+          onFinish={handleFinishWorkout}
+          onOpenExercise={handleOpenSession}
+          onSetOneRm={handleSetOneRm}
+          isSettingOneRm={isSettingOneRm}
+          restTimer={restTimer}
+          restDurationSec={restTimerSeconds}
+        />
+
+        <SessionModal
+          visible={sessionModalVisible}
+          onClose={handleCloseSessionModal}
+          onSave={handleSaveSession}
+          exercise={sessionExercise}
+          onSetOneRm={handleSetOneRm}
+          isSettingOneRm={isSettingOneRm}
+          restTimer={restTimer}
+          restDurationSec={restTimerSeconds}
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
 
-        <ActiveSessionBar
-          activeSummary={activeSummary}
-          isStarting={isStartingSession}
-          isFinishing={isFinishingSession}
-          onStart={handleStartWorkout}
-          onFinish={handleFinishWorkout}
-          restTimer={restTimer}
-          restDurationSec={restTimerSeconds}
-        />
+        <View style={styles.startWrapper}>
+          <Button
+            label={t('START_WORKOUT')}
+            onPress={handleStartWorkout}
+            loading={isStartingSession}
+          />
+        </View>
 
         <MesocyclePanel
           activeMesocycle={activeMesocycle}
           plan={plan}
           isPlanLoading={isPlanLoading}
-          onStartPress={handleOpenMesocycleModal}
           onChangeWeek={handleChangeWeek}
           onEndPress={handleEndMesocycle}
-          onManagePress={handleOpenMesocycleList}
-          hasMesocycles={mesocycles.length > 0}
+          onActivatePress={handleOpenMesocyclePicker}
         />
 
-        <PushPullTabs activeTab={activeTab} onTabSelect={setActiveTab} />
+        <RoutineTabs
+          routines={routines}
+          activeRoutineId={activeRoutineId}
+          onSelect={setActiveRoutineId}
+        />
 
-        {!hasRoutineForTab && !isLoading ? (
+        {!hasRoutines && !isLoading ? (
           <View style={styles.noRoutineBox}>
-            <Text style={styles.noRoutineText}>{t('NO_ROUTINE_FOR_TAB')}</Text>
-            <TouchableOpacity
-              style={styles.createRoutineBtn}
-              onPress={handleCreateRoutineForTab}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.createRoutineText}>{t('CREATE_ROUTINE')}</Text>
-            </TouchableOpacity>
+            <Text style={styles.noRoutineText}>{t('NO_ROUTINES_YET')}</Text>
+            <Text style={styles.noRoutineHint}>{t('CREATE_ROUTINE_IN_ROUTINES_TAB')}</Text>
           </View>
         ) : (
           <>
@@ -177,22 +198,12 @@ export default function TrainScreen() {
         restDurationSec={restTimerSeconds}
       />
 
-      <MesocycleModal
-        visible={mesocycleModalVisible}
-        onClose={handleCloseMesocycleModal}
-        onSave={handleCreateMesocycle}
-        routines={routines}
-        isSaving={isMesocycleSaving}
-      />
-
-      <MesocycleListModal
-        visible={mesocycleListVisible}
-        onClose={handleCloseMesocycleList}
+      <MesocyclePickerModal
+        visible={mesocyclePickerVisible}
+        onClose={handleCloseMesocyclePicker}
         mesocycles={mesocycles}
         activeMesocycleId={activeMesocycleId}
         onSelect={handleSelectMesocycle}
-        onDelete={handleDeleteMesocycle}
-        onCreatePress={handleCreateFromList}
       />
     </View>
   );
@@ -206,6 +217,9 @@ const getStyles = (colors, fonts) => StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingBottom: 32,
+  },
+  startWrapper: {
+    marginBottom: 16,
   },
   exerciseList: {
     gap: 16,
@@ -240,17 +254,11 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
   },
-  createRoutineBtn: {
-    backgroundColor: colors.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  createRoutineText: {
+  noRoutineHint: {
     fontFamily: fonts.medium,
     fontSize: 12,
     letterSpacing: 1.2,
-    color: colors.textDark,
+    color: colors.primary,
+    textAlign: 'center',
   },
 });
