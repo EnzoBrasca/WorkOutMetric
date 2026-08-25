@@ -110,6 +110,16 @@ export const useAuthStore = create(
       logout: () => {
         set({ isAuthenticated: false, user: null, token: null, refreshToken: null });
       },
+
+      // Mirrors a username the API has already accepted, so the profile screen
+      // reflects the change without a round trip. An action rather than a bare
+      // setter because `set` is zustand's own parameter and is not part of the
+      // store's state — reaching for it from a component yields undefined.
+      setUsername: (username) => {
+        set((state) => ({
+          user: state.user ? { ...state.user, username } : state.user,
+        }));
+      },
     }),
     {
       name: 'auth-storage',

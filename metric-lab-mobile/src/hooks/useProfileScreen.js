@@ -44,7 +44,7 @@ const MIN_USERNAME_LENGTH = 3;
 const MIN_PASSWORD_LENGTH = 6;
 
 export function useProfileScreen() {
-  const { user, token, logout, set: setAuth } = useAuthStore();
+  const { user, token, logout, setUsername } = useAuthStore();
   const { theme, font, language, setTheme, setFont, setLanguage, customColors, setCustomColor } = useSettingsStore();
 
   const [newUsername, setNewUsername] = useState(user?.username || '');
@@ -97,8 +97,7 @@ export function useProfileScreen() {
 
       // Update local username state if it changed
       if (usernameChanged) {
-        const updatedUser = { ...user, username };
-        setAuth({ user: updatedUser });
+        setUsername(username);
       }
     } catch (err) {
       setMessage(err.message || currentT.error);
