@@ -3,6 +3,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useConfigStore } from '../store/useConfigStore';
 import { useMesocycleStore } from '../store/useMesocycleStore';
 import { useSettingsStore } from '../store/useSettingsStore';
+import { EQUIPMENT, normalizeUnits, splitsAcrossUnits } from '../utils/equipment';
 
 // Mirrors the backend's own rule (services/exercisesService.setOneRm) so a bad
 // set is rejected before it ever reaches the network: weight must be a
@@ -158,16 +159,35 @@ export function useConfigScreen() {
   // belongs to a routine or not, and the training screen is what assigns one.
   const [newExerciseName, setNewExerciseName] = useState('');
   const [createError, setCreateError] = useState(null);
+  // Barbell by default: it is how every exercise behaved before equipment
+  // existed, so an untouched picker changes nothing about the weight shown.
+  const [newExerciseEquipment, setNewExerciseEquipment] = useState(EQUIPMENT.BARBELL);
+  const [newExerciseUnits, setNewExerciseUnits] = useState(1);
+
+  // Switching to equipment that cannot be split has to drop a previously
+  // chosen "two", or a barbell would carry a unit count the picker no longer
+  // shows and the label would claim something the user never selected.
+  const handleChangeNewExerciseEquipment = (equipment) => {
+    setNewExerciseEquipment(equipment);
+    setNewExerciseUnits((units) => normalizeUnits(equipment, units));
+  };
 
   const handleCreateExercise = async () => {
     if (!newExerciseName.trim()) {
       setCreateError('VALIDATION_REQUIRED');
       return;
     }
-    const result = await createExercise(newExerciseName, null);
+    const result = await createExercise(
+      newExerciseName,
+      null,
+      newExerciseEquipment,
+      newExerciseUnits
+    );
     if (result.success) {
       setNewExerciseName('');
       setCreateError(null);
+      setNewExerciseEquipment(EQUIPMENT.BARBELL);
+      setNewExerciseUnits(1);
       // The store appends new exercises, so with the catalog paged the card the
       // user just created lands past the last visible one and the screen looks
       // like nothing happened. Reveal far enough to show it.
@@ -255,6 +275,12 @@ export function useConfigScreen() {
     isCreatingExercise,
     handleChangeNewExerciseName: setNewExerciseName,
     handleCreateExercise,
+
+    newExerciseEquipment,
+    newExerciseUnits,
+    showUnitsPicker: splitsAcrossUnits(newExerciseEquipment),
+    handleChangeNewExerciseEquipment,
+    handleChangeNewExerciseUnits: setNewExerciseUnits,
 
     editingId,
     renameValue,

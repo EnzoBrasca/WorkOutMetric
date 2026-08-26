@@ -67,6 +67,11 @@ export async function getStats(db: SupabaseClient, userId: string) {
       // hardcoded to 'COMPOUND' here, which made every lift look identical.
       type: ex.muscle_group ?? null,
 
+      // What the lift is performed with, so the config catalog and the
+      // training cards can say whether a weight is a total or per implement.
+      equipment: ex.equipment ?? null,
+      equipment_units: ex.equipment_units ?? 1,
+
       // `value` stays the field the existing UI reads. It prefers the user's
       // own reference and only falls back to history when there is none.
       value:

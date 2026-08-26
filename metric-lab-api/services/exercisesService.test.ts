@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { deleteExercise, syncExercises } from './exercisesService';
+import { deleteExercise, syncExercises, normalizeEquipment, normalizeEquipmentUnits } from './exercisesService';
 
 // syncExercises only reaches the database through exercisesRepository.upsertMany,
 // which forwards straight to db.from('exercises').upsert(rows). Capturing that
@@ -126,5 +126,73 @@ describe('deleteExercise', () => {
     const result = await deleteExercise(db, 'user-1', 'ex-1');
 
     assert.equal(result.deleted, 0);
+  });
+});
+
+describe('normalizeEquipment', () => {
+  test('keeps a tag, uppercased and trimmed', () => {
+    assert.equal(normalizeEquipment('dumbbell'), 'DUMBBELL');
+    assert.equal(normalizeEquipment('  CABLE '), 'CABLE');
+  });
+
+  // Every exercise that predates this feature arrives with no tag and must
+  // stay that way — null is what renders as a plain total weight.
+  test('leaves an untagged exercise untagged', () => {
+    assert.equal(normalizeEquipment(null), null);
+    assert.equal(normalizeEquipment(undefined), null);
+    assert.equal(normalizeEquipment(''), null);
+    assert.equal(normalizeEquipment('   '), null);
+    assert.equal(normalizeEquipment(42), null);
+  });
+});
+
+describe('normalizeEquipmentUnits', () => {
+  test('allows two only for equipment a load can split across', () => {
+    assert.equal(normalizeEquipmentUnits('DUMBBELL', 2), 2);
+    assert.equal(normalizeEquipmentUnits('CABLE', 2), 2);
+    assert.equal(normalizeEquipmentUnits('DUMBBELL', 1), 1);
+  });
+
+  test('pins single-implement equipment to one unit', () => {
+    assert.equal(normalizeEquipmentUnits('BARBELL', 2), 1);
+    assert.equal(normalizeEquipmentUnits('SMITH', 2), 1);
+    assert.equal(normalizeEquipmentUnits('OTHER', 2), 1);
+    assert.equal(normalizeEquipmentUnits(null, 2), 1);
+  });
+
+  // The column's CHECK only accepts 1 or 2, so anything else is forced back
+  // here rather than sent to be rejected by the database.
+  test('forces an out-of-range count back to one', () => {
+    assert.equal(normalizeEquipmentUnits('DUMBBELL', 3), 1);
+    assert.equal(normalizeEquipmentUnits('DUMBBELL', 0), 1);
+    assert.equal(normalizeEquipmentUnits('DUMBBELL', null), 1);
+    assert.equal(normalizeEquipmentUnits('DUMBBELL', 'dos'), 1);
+  });
+});
+
+describe('syncExercises equipment columns', () => {
+  // postgrest-js normalises the column set across upserted rows: if one row
+  // omitted equipment while another carried it, the omitting row would get an
+  // explicit NULL written over its own value.
+  test('sends equipment columns on every row, tagged or not', async () => {
+    const { db, captured } = captureUpsert();
+
+    await syncExercises(db as any, 'user-1', [
+      { id: 'a'.repeat(36), name: 'Press banca', equipment: 'BARBELL' },
+      { id: 'b'.repeat(36), name: 'Curl', equipment: 'dumbbell', equipment_units: 2 },
+      { id: 'c'.repeat(36), name: 'Sin tag' },
+    ]);
+
+    captured.rows.forEach((row) => {
+      assert.ok('equipment' in row, 'every row must carry equipment');
+      assert.ok('equipment_units' in row, 'every row must carry equipment_units');
+    });
+
+    assert.equal(captured.rows[0].equipment, 'BARBELL');
+    assert.equal(captured.rows[0].equipment_units, 1);
+    assert.equal(captured.rows[1].equipment, 'DUMBBELL');
+    assert.equal(captured.rows[1].equipment_units, 2);
+    assert.equal(captured.rows[2].equipment, null);
+    assert.equal(captured.rows[2].equipment_units, 1);
   });
 });

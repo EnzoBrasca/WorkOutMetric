@@ -6,6 +6,7 @@ import { useConfigScreen } from '../hooks/useConfigScreen';
 import AsyncState, { shouldRenderState } from '../components/molecules/AsyncState';
 import Button from '../components/atoms/Button';
 import MesocycleModal from '../components/organisms/MesocycleModal';
+import { EQUIPMENT_OPTIONS, equipmentWeightLabel } from '../utils/equipment';
 
 function typeLabel(t, type) {
   const normalized = String(type ?? '').toLowerCase();
@@ -33,6 +34,12 @@ export default function ConfigScreen() {
     isCreatingExercise,
     handleChangeNewExerciseName,
     handleCreateExercise,
+
+    newExerciseEquipment,
+    newExerciseUnits,
+    showUnitsPicker,
+    handleChangeNewExerciseEquipment,
+    handleChangeNewExerciseUnits,
 
     editingId,
     renameValue,
@@ -182,6 +189,54 @@ export default function ConfigScreen() {
               />
               {createError ? <Text style={styles.fieldError}>{t(createError)}</Text> : null}
             </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>{t("EQUIPMENT")}</Text>
+              <View style={styles.chipRow}>
+                {EQUIPMENT_OPTIONS.map((option) => {
+                  const isSelected = newExerciseEquipment === option.value;
+                  return (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[styles.chip, isSelected && styles.chipSelected]}
+                      onPress={() => handleChangeNewExerciseEquipment(option.value)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
+                        {t(option.labelKey)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {showUnitsPicker ? (
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>{t("EQUIP_UNITS")}</Text>
+                <View style={styles.chipRow}>
+                  {[
+                    { value: 1, labelKey: 'EQUIP_UNITS_ONE' },
+                    { value: 2, labelKey: 'EQUIP_UNITS_TWO' },
+                  ].map((option) => {
+                    const isSelected = newExerciseUnits === option.value;
+                    return (
+                      <TouchableOpacity
+                        key={option.value}
+                        style={[styles.chip, isSelected && styles.chipSelected]}
+                        onPress={() => handleChangeNewExerciseUnits(option.value)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
+                          {t(option.labelKey)}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : null}
+
             <Button
               label={t("CREATE")}
               onPress={handleCreateExercise}
@@ -257,7 +312,9 @@ export default function ConfigScreen() {
                           <Text style={styles.oneRmValue}>
                             {lift.oneRm != null ? lift.oneRm : '—'}
                           </Text>
-                          <Text style={styles.inlineUnit}>{t('KG')}</Text>
+                          <Text style={styles.inlineUnit}>
+                            {equipmentWeightLabel(t, lift.equipment, lift.equipment_units)}
+                          </Text>
                           {lift.isManual ? (
                             <Text style={styles.manualBadge}>{t('MANUAL_BADGE')}</Text>
                           ) : null}
@@ -571,6 +628,35 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     marginBottom: 4,
+    // Holds the equipment label ("KG · POR MANCUERNA (x2)") now, not a bare
+    // "KG": it has to wrap rather than push the row off-screen.
+    flexShrink: 1,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: colors.borderAlt,
+    backgroundColor: colors.background,
+  },
+  chipSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
+  },
+  chipText: {
+    fontFamily: fonts.medium,
+    fontSize: 12,
+    letterSpacing: 0.6,
+    color: colors.textSecondary,
+  },
+  chipTextSelected: {
+    color: colors.background,
   },
   fieldError: {
     fontFamily: fonts.regular,

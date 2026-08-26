@@ -3,6 +3,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import OneRmPrompt from './OneRmPrompt';
+import { equipmentWeightLabel } from '../../utils/equipment';
 
 // exercise.planTarget is attached by useTrainScreen when an active mesocycle
 // covers this exercise (see useMesocycleStore's plan). When it's absent this
@@ -41,7 +42,9 @@ export default function ExerciseCard({ exercise, onEdit, onDelete, onStart, onSe
             <Text style={styles.statValueWeight} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
               {planTarget ? (planTarget.needsOneRm ? '—' : planTarget.targetWeight) : exercise.weight}
             </Text>
-            <Text style={styles.statUnit}>{t("KG")}</Text>
+            <Text style={styles.statUnit} numberOfLines={2}>
+              {equipmentWeightLabel(t, exercise.equipment, exercise.equipment_units)}
+            </Text>
           </View>
         </View>
         <View style={styles.statCol}>
@@ -158,6 +161,10 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     marginBottom: 4,
+    // The equipment label ("KG · POR MANCUERNA (x2)") is much wider than the
+    // bare "KG" this used to hold: it has to wrap beside a 44px number rather
+    // than push the column off-screen.
+    flexShrink: 1,
   },
   statValueSets: {
     fontFamily: fonts.bold,

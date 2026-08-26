@@ -9,7 +9,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 // mobile app still renders them (ExerciseCard, SessionModal) and creates rows
 // with them, so dropping them here would blank the config and session screens.
 const CATALOG_COLUMNS =
-  'id, name, muscle_group, sets, week, weight, one_rm, one_rm_weight, one_rm_reps';
+  'id, name, muscle_group, sets, week, weight, one_rm, one_rm_weight, one_rm_reps, equipment, equipment_units';
 
 export async function findAllByUserId(db: SupabaseClient, userId: string) {
   const { data, error } = await db

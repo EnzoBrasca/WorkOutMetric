@@ -139,6 +139,8 @@ export function useTrainScreen() {
           weight: '0.0',
           sets: `${membership.target_sets}x${membership.target_reps}`,
           week: 'WK 1/4',
+          equipment: nested.equipment ?? null,
+          equipment_units: nested.equipment_units ?? 1,
         };
         const planTarget = planByExerciseId[base.id];
 

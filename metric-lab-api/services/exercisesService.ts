@@ -8,6 +8,28 @@ export async function listExercises(db: SupabaseClient, userId: string) {
   return exercisesRepository.findAllByUserId(db, userId);
 }
 
+// Equipment a load can be split across — held one per hand, or loaded per
+// side. Everything else is a single implement carrying the whole weight.
+const SPLITTABLE_EQUIPMENT = new Set(['DUMBBELL', 'CABLE']);
+
+/** An untagged exercise stays untagged: null reads as a plain total weight. */
+export function normalizeEquipment(equipment: unknown): string | null {
+  if (typeof equipment !== 'string') return null;
+  const trimmed = equipment.trim().toUpperCase();
+  return trimmed === '' ? null : trimmed;
+}
+
+/**
+ * The unit count to store. The column's CHECK accepts only 1 or 2, and
+ * equipment that cannot be split is pinned to 1 rather than sent to be
+ * rejected — a barbell tagged as 2 is a value the UI never offered.
+ */
+export function normalizeEquipmentUnits(equipment: unknown, units: unknown): number {
+  const tag = normalizeEquipment(equipment);
+  if (tag === null || !SPLITTABLE_EQUIPMENT.has(tag)) return 1;
+  return Number(units) === 2 ? 2 : 1;
+}
+
 /**
  * Sets the reference 1RM every mesocycle target weight derives from.
  *
@@ -110,6 +132,12 @@ export async function syncExercises(db: SupabaseClient, userId: string, exercise
       sets: ex.sets,
       week: ex.week,
       weight: ex.weight,
+      // Always present, never conditional: postgrest-js builds the upsert's
+      // column set from the union of the rows' keys, so a row omitting these
+      // while a sibling carried them would have an explicit NULL written over
+      // its equipment — the same failure mode documented for one_rm and id.
+      equipment: normalizeEquipment(ex.equipment),
+      equipment_units: normalizeEquipmentUnits(ex.equipment, ex.equipment_units),
     };
 
     // Every row carries an id, even a brand-new exercise. postgrest-js builds

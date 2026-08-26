@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiRequest } from '../api/client';
 import * as oneRmApi from '../api/oneRm';
 import { useWorkoutStore } from './useWorkoutStore';
+import { normalizeUnits } from '../utils/equipment';
 
 // A lift's id is the exercise UUID the server keyed its 1RM by. Earlier builds
 // seeded this store with six invented lifts using ids '1'-'6', which are not
@@ -114,15 +115,23 @@ export const useConfigStore = create(
        * here in the same shape /data/stats would give a brand new exercise —
        * no reference 1RM, no history — so it shows up immediately.
        */
-      createExercise: async (name, type) => {
+      createExercise: async (name, type, equipment = null, equipmentUnits = 1) => {
         const trimmed = String(name ?? '').trim();
         if (!trimmed) return { success: false, error: 'VALIDATION_REQUIRED' };
 
         set({ isCreatingExercise: true, error: null });
         try {
-          const created = await useWorkoutStore
-            .getState()
-            .addExercise({ name: trimmed, week: 'WK 1/4', weight: '0.0', sets: '0x0' }, type);
+          const created = await useWorkoutStore.getState().addExercise(
+            {
+              name: trimmed,
+              week: 'WK 1/4',
+              weight: '0.0',
+              sets: '0x0',
+              equipment,
+              equipment_units: normalizeUnits(equipment, equipmentUnits),
+            },
+            type
+          );
 
           set((state) => ({
             lifts1rm: [
@@ -131,6 +140,8 @@ export const useConfigStore = create(
                 id: created.id,
                 name: created.name,
                 type: created.type,
+                equipment: created.equipment ?? null,
+                equipment_units: created.equipment_units ?? 1,
                 value: '',
                 prev: '',
                 oneRm: null,
