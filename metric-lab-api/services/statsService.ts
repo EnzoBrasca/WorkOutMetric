@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import * as exercisesRepository from '../repositories/exercisesRepository';
 import * as sessionsRepository from '../repositories/sessionsRepository';
-import { epley1RM } from './oneRmCalculator';
+import { blendedOneRm } from './oneRmCalculator';
 
 /**
  * Per-exercise 1RM view for the config screen.
@@ -47,7 +47,7 @@ export async function getStats(db: SupabaseClient, userId: string) {
       const entry = historyMax[log.exercise_id];
       if (!entry) return;
 
-      const calculated = epley1RM(parseFloat(log.weight) || 0, parseInt(log.completed_reps) || 0);
+      const calculated = blendedOneRm(parseFloat(log.weight) || 0, parseInt(log.completed_reps) || 0);
 
       if (calculated > entry.allTime) entry.allTime = calculated;
       if (isMostRecentSession && calculated > entry.recent) entry.recent = calculated;
