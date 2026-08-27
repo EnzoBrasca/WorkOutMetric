@@ -5,7 +5,21 @@ import { useWorkoutStore } from '../store/useWorkoutStore';
 import { useMesocycleStore } from '../store/useMesocycleStore';
 import { useSessionStore } from '../store/useSessionStore';
 import { useSettingsStore } from '../store/useSettingsStore';
+import { useExerciseOverrideStore, resolveOverride } from '../store/useExerciseOverrideStore';
 import { useRestTimer } from './useRestTimer';
+
+// The single merge point for what an exercise's target sets/reps actually
+// are: a local override (scoped to the current mesocycle week) beats the
+// mesocycle plan's calculated target, which beats the routine membership's
+// raw target_sets/target_reps. Exported so the precedence rule itself is
+// unit-testable without mounting the whole hook.
+export function resolveEffectiveTarget(membership, planTarget, override) {
+  return {
+    targetSets: override?.targetSets ?? planTarget?.targetSets ?? membership.target_sets,
+    targetReps: override?.targetReps ?? planTarget?.targetReps ?? membership.target_reps,
+    hasOverride: Boolean(override),
+  };
+}
 
 export function useTrainScreen() {
   const t = useTranslation();
@@ -53,6 +67,8 @@ export function useTrainScreen() {
 
   const restTimerSeconds = useSettingsStore((state) => state.restTimerSeconds);
   const restTimer = useRestTimer(restTimerSeconds);
+
+  const { overridesByMesocycle, setOverride, clearOverride } = useExerciseOverrideStore();
 
   const activeMesocycle = useMemo(
     () => mesocycles.find((m) => m.id === activeMesocycleId) || null,
@@ -122,6 +138,12 @@ export function useTrainScreen() {
     return map;
   }, [plan]);
 
+  // The plan is already computed FOR this week (plan.week), so it is the most
+  // direct source of "what week is it right now" -- current_week on the
+  // mesocycle row is the same number, but only once the plan has actually
+  // loaded do we know for certain which week an override should be scoped to.
+  const currentWeek = plan?.week ?? activeMesocycle?.current_week ?? null;
+
   // Train shows the ACTIVE ROUTINE's membership, not every catalog exercise
   // filtered by type. Each row is the catalog exercise (for its free-text
   // weight/sets fallback — vestigial, but still what SessionModal/ExerciseCard
@@ -144,14 +166,34 @@ export function useTrainScreen() {
         };
         const planTarget = planByExerciseId[base.id];
 
+        // Overrides only make sense scoped to a mesocycle week, so they never
+        // apply with no active mesocycle -- resolveOverride already returns
+        // undefined without a mesocycleId/week, this just makes the gate explicit.
+        const override = activeMesocycleId
+          ? resolveOverride(overridesByMesocycle, activeMesocycleId, currentWeek, base.id)
+          : undefined;
+        const effective = resolveEffectiveTarget(membership, planTarget, override);
+
         return {
           ...base,
           ...(planTarget ? { planTarget } : {}),
           targetSets: membership.target_sets,
           targetReps: membership.target_reps,
+          effectiveTargetSets: effective.targetSets,
+          effectiveTargetReps: effective.targetReps,
+          hasOverride: effective.hasOverride,
         };
       }),
-    [routineMembership, exerciseCatalogById, planByExerciseId, activeRoutine, t]
+    [
+      routineMembership,
+      exerciseCatalogById,
+      planByExerciseId,
+      activeRoutine,
+      t,
+      activeMesocycleId,
+      currentWeek,
+      overridesByMesocycle,
+    ]
   );
 
   // Catalog exercises available to add: same type as the tab, not already a
@@ -251,6 +293,21 @@ export function useTrainScreen() {
     }
   };
 
+  // Edits sets/reps for an exercise locally, scoped to (mesocycle, current
+  // week). Never sent to the backend -- see useExerciseOverrideStore. There
+  // is nothing to scope the override to without an active mesocycle/week, so
+  // this is a no-op then rather than writing an override no card could ever
+  // read back.
+  const handleSetTargetOverride = (exerciseId, targetSets, targetReps) => {
+    if (!activeMesocycleId || !currentWeek) return { success: false, error: 'NO_ACTIVE_MESOCYCLE' };
+    return setOverride(activeMesocycleId, currentWeek, exerciseId, targetSets, targetReps);
+  };
+
+  const handleClearTargetOverride = (exerciseId) => {
+    if (!activeMesocycleId || !currentWeek) return;
+    clearOverride(activeMesocycleId, currentWeek, exerciseId);
+  };
+
   const handleOpenMesocyclePicker = () => setMesocyclePickerVisible(true);
   const handleCloseMesocyclePicker = () => setMesocyclePickerVisible(false);
 
@@ -293,6 +350,8 @@ export function useTrainScreen() {
     handleCloseModal,
     handleSave,
     handleRemoveFromRoutine,
+    handleSetTargetOverride,
+    handleClearTargetOverride,
 
     sessionModalVisible,
     sessionExercise,

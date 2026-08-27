@@ -3,13 +3,30 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import OneRmPrompt from './OneRmPrompt';
+import TargetOverrideEditor from './TargetOverrideEditor';
 import { equipmentWeightLabel } from '../../utils/equipment';
 
 // exercise.planTarget is attached by useTrainScreen when an active mesocycle
 // covers this exercise (see useMesocycleStore's plan). When it's absent this
 // renders exactly as before, so exercises outside a mesocycle — or when no
 // mesocycle is active at all — are unaffected.
-export default function ExerciseCard({ exercise, onEdit, onDelete, onStart, onSetOneRm, isSettingOneRm }) {
+//
+// exercise.effectiveTargetSets/effectiveTargetReps/hasOverride come from the
+// same hook's override merge (useExerciseOverrideStore) -- a local, per-week
+// adjustment on top of planTarget/the routine's own target. Editing is only
+// offered with an active mesocycle (editable), since an override is scoped to
+// (mesocycleId, week) and has nothing to scope to otherwise.
+export default function ExerciseCard({
+  exercise,
+  onEdit,
+  onDelete,
+  onStart,
+  onSetOneRm,
+  isSettingOneRm,
+  onSetTargetOverride,
+  onClearTargetOverride,
+  editable,
+}) {
   const t = useTranslation();
   const { colors, fonts } = useTheme();
   const styles = getStyles(colors, fonts);
@@ -49,9 +66,42 @@ export default function ExerciseCard({ exercise, onEdit, onDelete, onStart, onSe
         </View>
         <View style={styles.statCol}>
           <Text style={styles.statLabel}>{t("SETS_X_REPS")}</Text>
-          <Text style={styles.statValueSets} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
-            {planTarget ? `${planTarget.targetSets}x${planTarget.targetReps}` : exercise.sets}
-          </Text>
+          {exercise.hasOverride && editable ? (
+            // An override is active AND this view can edit it (Train's own
+            // list) -- full editor, reset included.
+            <TargetOverrideEditor
+              sets={exercise.effectiveTargetSets}
+              reps={exercise.effectiveTargetReps}
+              hasOverride
+              editable
+              onSave={(sets, reps) => onSetTargetOverride(exercise.id, sets, reps)}
+              onReset={() => onClearTargetOverride(exercise.id)}
+            />
+          ) : exercise.hasOverride ? (
+            // An override is active but this view (the in-progress session
+            // list) has no edit affordance -- still show the ADJUSTED value,
+            // just not editable from here.
+            <View>
+              <Text style={styles.statValueSets} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
+                {exercise.effectiveTargetSets}x{exercise.effectiveTargetReps}
+              </Text>
+              <Text style={styles.adjustedBadge}>{t('ADJUSTED_BADGE')}</Text>
+            </View>
+          ) : editable && planTarget ? (
+            // No override yet, but this view can create one.
+            <TargetOverrideEditor
+              sets={exercise.effectiveTargetSets}
+              reps={exercise.effectiveTargetReps}
+              hasOverride={false}
+              editable
+              onSave={(sets, reps) => onSetTargetOverride(exercise.id, sets, reps)}
+              onReset={() => onClearTargetOverride(exercise.id)}
+            />
+          ) : (
+            <Text style={styles.statValueSets} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
+              {planTarget ? `${planTarget.targetSets}x${planTarget.targetReps}` : exercise.sets}
+            </Text>
+          )}
         </View>
       </View>
 
@@ -172,5 +222,11 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     letterSpacing: -0.96,
     color: colors.primary,
     lineHeight: 44,
+  },
+  adjustedBadge: {
+    fontFamily: fonts.medium,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    color: colors.textSecondary,
   },
 });

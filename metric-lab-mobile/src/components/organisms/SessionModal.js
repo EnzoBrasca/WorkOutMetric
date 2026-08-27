@@ -28,11 +28,20 @@ export default function SessionModal({
   // mesocycle covers this exercise. When it's absent — no active mesocycle,
   // or this exercise isn't in the mesocycle's routine — fall back to parsing
   // the free-text "4x8" the exercise was created with, exactly as before.
+  //
+  // exercise.hasOverride/effectiveTargetSets/effectiveTargetReps come from
+  // the same hook's local sets/reps override (useExerciseOverrideStore),
+  // scoped to the current mesocycle week -- when one is set it takes
+  // precedence over the plan target, same as ExerciseCard's display.
   const planTarget = exercise?.planTarget;
-  const targetSets = planTarget
+  const targetSets = exercise?.hasOverride
+    ? exercise.effectiveTargetSets
+    : planTarget
     ? planTarget.targetSets
     : (exercise?.sets ? parseInt(exercise.sets.split('x')[0], 10) || 0 : 0);
-  const targetReps = planTarget
+  const targetReps = exercise?.hasOverride
+    ? exercise.effectiveTargetReps
+    : planTarget
     ? planTarget.targetReps
     : (exercise?.sets ? parseInt(exercise.sets.split('x')[1], 10) || 0 : 0);
   const targetWeight = planTarget ? planTarget.targetWeight : null;

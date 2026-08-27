@@ -35,6 +35,8 @@ export default function TrainScreen() {
     handleCloseModal,
     handleSave,
     handleRemoveFromRoutine,
+    handleSetTargetOverride,
+    handleClearTargetOverride,
 
     sessionModalVisible,
     sessionExercise,
@@ -161,6 +163,9 @@ export default function TrainScreen() {
                       onStart={handleOpenSession}
                       onSetOneRm={handleSetOneRm}
                       isSettingOneRm={isSettingOneRm}
+                      onSetTargetOverride={handleSetTargetOverride}
+                      onClearTargetOverride={handleClearTargetOverride}
+                      editable={Boolean(activeMesocycleId)}
                     />
                   ))}
                 </View>

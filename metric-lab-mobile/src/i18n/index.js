@@ -155,7 +155,10 @@ const translations = {
     EQUIP_PER_DUMBBELL: 'PER DUMBBELL',
     EQUIP_PER_DUMBBELL_X2: 'PER DUMBBELL (x2)',
     EQUIP_PER_CABLE: 'ON THE STACK',
-    EQUIP_PER_CABLE_X2: 'PER SIDE (x2)'
+    EQUIP_PER_CABLE_X2: 'PER SIDE (x2)',
+    ADJUSTED_BADGE: 'ADJUSTED',
+    RESET_TO_SUGGESTED: 'RESET TO SUGGESTED',
+    RADAR_EMPTY: 'No 1RM recorded yet for the exercises in this routine.',
   },
   es: {
     PUSH: 'EMPUJE',
@@ -311,7 +314,10 @@ const translations = {
     EQUIP_PER_DUMBBELL: 'POR MANCUERNA',
     EQUIP_PER_DUMBBELL_X2: 'POR MANCUERNA (x2)',
     EQUIP_PER_CABLE: 'EN LA TORRE',
-    EQUIP_PER_CABLE_X2: 'POR LADO (x2)'
+    EQUIP_PER_CABLE_X2: 'POR LADO (x2)',
+    ADJUSTED_BADGE: 'AJUSTADO',
+    RESET_TO_SUGGESTED: 'RESTABLECER SUGERIDO',
+    RADAR_EMPTY: 'Todavía no hay 1RM registrado para los ejercicios de esta rutina.',
   }
 };
 

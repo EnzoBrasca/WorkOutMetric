@@ -33,4 +33,61 @@ describe('SessionModal', () => {
     expect(title.props.numberOfLines).toBe(1);
     expect(title.props.ellipsizeMode).toBe('tail');
   });
+
+  // exercise.hasOverride/effectiveTargetSets/effectiveTargetReps are set by
+  // useTrainScreen's merge of a local sets/reps override on top of the
+  // mesocycle plan target. The completed-sets/reps inputs, and the TARGET
+  // line, must reflect that override rather than the plan's own numbers.
+  it('prefills completed sets/reps from an override, not from the plan target', async () => {
+    const overriddenExercise = {
+      ...exercise,
+      planTarget: { targetSets: 3, targetReps: 6, targetWeight: 90 },
+      hasOverride: true,
+      effectiveTargetSets: 5,
+      effectiveTargetReps: 5,
+    };
+
+    await render(
+      <SessionModal
+        visible
+        onClose={() => {}}
+        onSave={() => {}}
+        exercise={overriddenExercise}
+        onSetOneRm={() => {}}
+        isSettingOneRm={false}
+        restTimer={null}
+        restDurationSec={90}
+      />
+    );
+
+    expect(screen.getByText(/TARGET.*5x5/)).toBeTruthy();
+    expect(screen.getAllByDisplayValue('5')).toHaveLength(2);
+  });
+
+  it('falls back to the plan target when no override is set', async () => {
+    const planOnlyExercise = {
+      ...exercise,
+      planTarget: { targetSets: 3, targetReps: 6, targetWeight: 90 },
+      hasOverride: false,
+      effectiveTargetSets: 3,
+      effectiveTargetReps: 6,
+    };
+
+    await render(
+      <SessionModal
+        visible
+        onClose={() => {}}
+        onSave={() => {}}
+        exercise={planOnlyExercise}
+        onSetOneRm={() => {}}
+        isSettingOneRm={false}
+        restTimer={null}
+        restDurationSec={90}
+      />
+    );
+
+    expect(screen.getByText(/TARGET.*3x6/)).toBeTruthy();
+    expect(screen.getByDisplayValue('3')).toBeTruthy();
+    expect(screen.getByDisplayValue('6')).toBeTruthy();
+  });
 });
