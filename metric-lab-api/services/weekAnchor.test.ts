@@ -2,6 +2,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   artDateOf,
+  artMidnightUtc,
   artMondayOf,
   currentWeekFor,
   mondayOf,
@@ -31,6 +32,21 @@ describe('artDateOf', () => {
     // offset of -2 would put this instant on 2026-01-05 instead.
     assert.equal(artDateOf(new Date('2026-01-05T02:30:00Z')), '2026-01-04');
     assert.equal(artDateOf(new Date('2026-07-06T02:30:00Z')), '2026-07-05');
+  });
+});
+
+describe('artMidnightUtc', () => {
+  test('returns the real UTC instant that is 00:00 in Buenos Aires', () => {
+    // ART midnight on Aug 1st is 03:00 UTC the same day (ART is UTC-3).
+    assert.equal(artMidnightUtc('2026-08-01').toISOString(), '2026-08-01T03:00:00.000Z');
+  });
+
+  test('is stable across the southern summer (no DST)', () => {
+    assert.equal(artMidnightUtc('2026-01-01').toISOString(), '2026-01-01T03:00:00.000Z');
+  });
+
+  test('crosses a year boundary correctly', () => {
+    assert.equal(artMidnightUtc('2027-01-01').toISOString(), '2027-01-01T03:00:00.000Z');
   });
 });
 

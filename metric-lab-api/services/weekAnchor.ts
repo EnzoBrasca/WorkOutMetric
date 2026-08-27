@@ -64,6 +64,57 @@ export function artMondayOf(now: Date = new Date()): string {
   return mondayOf(artDateOf(now));
 }
 
+/**
+ * The Argentine UTC offset (in minutes, negative for behind UTC) in effect at
+ * `instant`. Resolved through the platform's timezone database rather than
+ * hardcoded -180, so this keeps working if Argentina's DST rules ever change
+ * again -- same reasoning as ART_DATE_FORMAT above.
+ */
+function artOffsetMinutesAt(instant: Date): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: ART_TIME_ZONE,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+    .formatToParts(instant)
+    .reduce<Record<string, string>>((acc, part) => {
+      if (part.type !== 'literal') acc[part.type] = part.value;
+      return acc;
+    }, {});
+
+  // Some ICU implementations report midnight as hour "24" rather than "00".
+  const hour = Number(parts.hour) % 24;
+  const asIfUtc = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    hour,
+    Number(parts.minute),
+    Number(parts.second)
+  );
+  return (asIfUtc - instant.getTime()) / (60 * 1000);
+}
+
+/**
+ * The real UTC instant that is 00:00 in Argentina on the given calendar date.
+ * Needed anywhere a calendar boundary (a month, a week) has to be compared
+ * against a TIMESTAMPTZ column rather than another calendar date.
+ */
+export function artMidnightUtc(isoDate: string): Date {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  // Guess midnight UTC, then correct by the ART offset at that instant. Since
+  // Argentina's offset is constant across the correction, this lands exactly
+  // on real ART midnight.
+  const guess = Date.UTC(year, month - 1, day);
+  const offsetMinutes = artOffsetMinutesAt(new Date(guess));
+  return new Date(guess - offsetMinutes * 60 * 1000);
+}
+
 // A DATE column arrives as 'YYYY-MM-DD'; a caller holding a Date is accepted
 // too so the anchor can be built in memory without formatting it first.
 function toIsoDate(value: string | Date): string {

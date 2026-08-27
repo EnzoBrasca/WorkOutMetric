@@ -29,6 +29,28 @@ export async function findSessionsWithSetLogsByUserId(
   return data;
 }
 
+// Set logs for a user within a half-open date range [startDate, endDate),
+// used to bucket implied 1RMs into calendar months. set_logs has no user_id
+// column of its own, so workout_sessions is inner-joined purely to scope the
+// read -- the caller never sees that column, only the row it filters on.
+export async function findSetLogsByUserIdAndDateRange(
+  db: SupabaseClient,
+  userId: string,
+  startDate: string,
+  endDate: string
+) {
+  const { data, error } = await db
+    .from('set_logs')
+    .select('exercise_id, weight, completed_reps, logged_at, workout_sessions!inner(user_id)')
+    .eq('workout_sessions.user_id', userId)
+    .gte('logged_at', startDate)
+    .lt('logged_at', endDate)
+    .order('logged_at', { ascending: true });
+
+  if (error) throw error;
+  return data;
+}
+
 export async function createSession(
   db: SupabaseClient,
   params: Record<string, unknown>
