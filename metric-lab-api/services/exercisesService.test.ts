@@ -196,3 +196,38 @@ describe('syncExercises equipment columns', () => {
     assert.equal(captured.rows[2].equipment_units, 1);
   });
 });
+
+describe('syncExercises guide_slug', () => {
+  // Same column-set hazard as equipment above: a batch where only some
+  // exercises were matched to an illustrated movement would blank the slug on
+  // the rest if the key were conditional.
+  test('sends guide_slug on every row, matched or not', async () => {
+    const { db, captured } = captureUpsert();
+
+    await syncExercises(db as any, 'user-1', [
+      { id: 'a'.repeat(36), name: 'Press banca', guide_slug: 'bench-press' },
+      { id: 'b'.repeat(36), name: 'Sin match' },
+      { id: 'c'.repeat(36), name: 'Vacío', guide_slug: '   ' },
+    ]);
+
+    captured.rows.forEach((row) => {
+      assert.ok('guide_slug' in row, 'every row must carry guide_slug');
+    });
+
+    assert.equal(captured.rows[0].guide_slug, 'bench-press');
+    assert.equal(captured.rows[1].guide_slug, null);
+    // Whitespace is not a match — it would resolve to no illustration anyway,
+    // so it is stored as the absence it represents.
+    assert.equal(captured.rows[2].guide_slug, null);
+  });
+
+  test('keeps an unknown slug rather than validating against a catalog the API does not have', async () => {
+    const { db, captured } = captureUpsert();
+
+    await syncExercises(db as any, 'user-1', [
+      { id: 'a'.repeat(36), name: 'Movimiento nuevo', guide_slug: 'not-in-this-version' },
+    ]);
+
+    assert.equal(captured.rows[0].guide_slug, 'not-in-this-version');
+  });
+});

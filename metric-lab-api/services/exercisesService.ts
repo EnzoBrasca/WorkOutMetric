@@ -31,6 +31,20 @@ export function normalizeEquipmentUnits(equipment: unknown, units: unknown): num
 }
 
 /**
+ * The illustrated movement this exercise refers to, or null for none.
+ *
+ * Not validated against the catalog: the slug list lives in the mobile app's
+ * copy of @bryllim/workout-guide, so an app newer than the API would have its
+ * matches rejected by a server-side allowlist. An unknown slug costs nothing —
+ * the client renders no illustration for one it cannot resolve.
+ */
+export function normalizeGuideSlug(slug: unknown): string | null {
+  if (typeof slug !== 'string') return null;
+  const trimmed = slug.trim();
+  return trimmed === '' ? null : trimmed;
+}
+
+/**
  * Sets the reference 1RM every mesocycle target weight derives from.
  *
  * Accepts either shape:
@@ -138,6 +152,7 @@ export async function syncExercises(db: SupabaseClient, userId: string, exercise
       // its equipment — the same failure mode documented for one_rm and id.
       equipment: normalizeEquipment(ex.equipment),
       equipment_units: normalizeEquipmentUnits(ex.equipment, ex.equipment_units),
+      guide_slug: normalizeGuideSlug(ex.guide_slug),
     };
 
     // Every row carries an id, even a brand-new exercise. postgrest-js builds
