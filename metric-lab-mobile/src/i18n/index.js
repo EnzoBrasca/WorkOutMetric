@@ -164,6 +164,10 @@ const translations = {
     ADJUSTED_BADGE: 'ADJUSTED',
     RESET_TO_SUGGESTED: 'RESET TO SUGGESTED',
     RADAR_EMPTY: 'No 1RM recorded yet for the exercises in this routine.',
+    GUIDE_HOW_TO: 'HOW TO PERFORM',
+    GUIDE_STEP: 'STEP',
+    GUIDE_TAP_HINT: 'Tap the illustration to see how the movement is performed',
+    CLOSE: 'CLOSE',
   },
   es: {
     PUSH: 'EMPUJE',
@@ -328,6 +332,10 @@ const translations = {
     ADJUSTED_BADGE: 'AJUSTADO',
     RESET_TO_SUGGESTED: 'RESTABLECER SUGERIDO',
     RADAR_EMPTY: 'Todavía no hay 1RM registrado para los ejercicios de esta rutina.',
+    GUIDE_HOW_TO: 'CÓMO EJECUTARLO',
+    GUIDE_STEP: 'PASO',
+    GUIDE_TAP_HINT: 'Tocá la ilustración para ver cómo se ejecuta el movimiento',
+    CLOSE: 'CERRAR',
   }
 };
 

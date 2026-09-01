@@ -72,3 +72,51 @@ describe('ExerciseCard', () => {
     expect(screen.getByText('Sentadilla')).toBeTruthy();
   });
 });
+
+// The safe-area provider is only needed once the walkthrough is open -- the
+// sheet is mounted on demand, so a card that is never tapped does not pull it
+// in. That is deliberate: these render one per row of a scrolling list.
+const GUIDE_METRICS = {
+  frame: { x: 0, y: 0, width: 390, height: 844 },
+  insets: { top: 47, left: 0, right: 0, bottom: 34 },
+};
+
+describe('ExerciseCard illustration', () => {
+  const ILLUSTRATED = { ...EXERCISE, guide_slug: 'bench-press' };
+
+  // The source artwork is pure white line art on transparency. It used to be
+  // drawn over a backgroundCard fill, which made it invisible under the light
+  // theme (#f4f4f5) and under any pale custom background.
+  it('tints the thumbnail rather than backing it with a fill', async () => {
+    await render(<ExerciseCard exercise={ILLUSTRATED} />);
+
+    const thumbnail = screen.getByTestId('exercise-guide-image');
+
+    expect(thumbnail.props.tintColor).toBeTruthy();
+    expect(thumbnail.props.style.backgroundColor).toBeUndefined();
+  });
+
+  it('opens the movement walkthrough when the illustration is tapped', async () => {
+    const { SafeAreaProvider } = require('react-native-safe-area-context');
+    await render(
+      <SafeAreaProvider initialMetrics={GUIDE_METRICS}>
+        <ExerciseCard exercise={ILLUSTRATED} />
+      </SafeAreaProvider>
+    );
+
+    expect(screen.queryAllByTestId(/exercise-guide-frame-/)).toHaveLength(0);
+
+    await interact(() => fireEvent.press(screen.getByTestId('exercise-guide-open')));
+
+    expect(screen.getAllByTestId(/exercise-guide-frame-/)).toHaveLength(3);
+  });
+
+  // Matching is opt-in, so most exercises carry no slug. They must not leave
+  // an invisible tap target where the picture would have been.
+  it('offers no illustration and no tap target without a slug', async () => {
+    await render(<ExerciseCard exercise={EXERCISE} />);
+
+    expect(screen.queryByTestId('exercise-guide-image')).toBeNull();
+    expect(screen.queryByTestId('exercise-guide-open')).toBeNull();
+  });
+});

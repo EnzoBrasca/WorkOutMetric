@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/useTheme';
 import Button from '../atoms/Button';
 import OneRmPrompt from '../molecules/OneRmPrompt';
-import ExerciseGuideImage from '../atoms/ExerciseGuideImage';
+import NeumorphicSurface from '../atoms/NeumorphicSurface';
 
 // Logging only. The rest timer used to be repeated here, but it is a property
 // of the workout, not of one exercise's numbers: WorkoutSessionView owns the
@@ -84,12 +84,18 @@ export default function SessionModal({
       >
         <View style={styles.modalContent}>
           <ScrollView keyboardShouldPersistTaps="handled">
-          <View style={styles.titleRow}>
-            <ExerciseGuideImage slug={exercise.guide_slug} size={48} />
-            <Text style={styles.modalTitle} numberOfLines={1} ellipsizeMode="tail">LOG SESSION: {exercise.name}</Text>
-          </View>
+          {/* No illustration here. The picture lives in two places only: the
+              Train card, where tapping it opens the movement walkthrough, and
+              the new-exercise picker, where it is how a movement is chosen.
+              By the time this modal is open the exercise is already picked. */}
+          <Text style={styles.modalTitle} numberOfLines={1} ellipsizeMode="tail">LOG SESSION: {exercise.name}</Text>
 
-          <View style={styles.targetBox}>
+          <NeumorphicSurface
+            variant="pressed"
+            radius={14}
+            backgroundColor={colors.backgroundCard}
+            style={styles.targetBox}
+          >
             {planTarget ? (
               <Text style={styles.targetLabel}>
                 {t("TARGET")}: {targetSets}x{targetReps}
@@ -102,28 +108,32 @@ export default function SessionModal({
             {planTarget?.needsOneRm && (
               <OneRmPrompt onSubmit={(value) => onSetOneRm(exercise.id, value)} loading={isSettingOneRm} />
             )}
-          </View>
+          </NeumorphicSurface>
 
           <View style={styles.row}>
             <View style={[styles.inputGroup, { flex: 1 }]}>
               <Text style={styles.label}>COMPLETED SETS</Text>
-              <TextInput
-                style={styles.input}
-                value={completedSets}
-                onChangeText={setCompletedSets}
-                keyboardType="numeric"
-                placeholderTextColor={colors.textSecondary}
-              />
+              <NeumorphicSurface variant="pressed" radius={12}>
+                <TextInput
+                  style={styles.input}
+                  value={completedSets}
+                  onChangeText={setCompletedSets}
+                  keyboardType="numeric"
+                  placeholderTextColor={colors.textSecondary}
+                />
+              </NeumorphicSurface>
             </View>
             <View style={[styles.inputGroup, { flex: 1 }]}>
               <Text style={styles.label}>REPS PER SET</Text>
-              <TextInput
-                style={styles.input}
-                value={completedReps}
-                onChangeText={setCompletedReps}
-                keyboardType="numeric"
-                placeholderTextColor={colors.textSecondary}
-              />
+              <NeumorphicSurface variant="pressed" radius={12}>
+                <TextInput
+                  style={styles.input}
+                  value={completedReps}
+                  onChangeText={setCompletedReps}
+                  keyboardType="numeric"
+                  placeholderTextColor={colors.textSecondary}
+                />
+              </NeumorphicSurface>
             </View>
           </View>
 
@@ -155,30 +165,21 @@ const getStyles = (colors, fonts) => StyleSheet.create({
   modalContent: {
     backgroundColor: colors.backgroundAlt,
     padding: 24,
-    borderTopWidth: 1,
-    borderColor: colors.border,
+    // Rounded sheet instead of the old hard 1px lip. No shadow of its own: the
+    // dimmed backdrop already separates it from the workout behind it.
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     maxHeight: '85%',
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 16,
   },
   modalTitle: {
     fontFamily: fonts.semiBold,
     fontSize: 20,
     color: colors.primary,
     letterSpacing: 1,
-    // The spacing below now belongs to the row, so the title stays vertically
-    // centred against the illustration beside it.
-    flexShrink: 1,
+    marginBottom: 16,
   },
   targetBox: {
-    backgroundColor: colors.backgroundCard,
     padding: 12,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
     marginBottom: 24,
     alignItems: 'center',
   },
@@ -206,9 +207,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     fontFamily: fonts.semiBold,
     fontSize: 24,
     color: colors.textPrimary,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    backgroundColor: colors.background,
     padding: 12,
     textAlign: 'center',
   },
@@ -228,15 +226,19 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     color: colors.primaryLight,
     marginBottom: 8,
   },
+  // A rounded track with the fill clipped to it, rather than a bordered box.
+  // No shadow: an 8px bar is too thin to read one, and it would only muddy
+  // the fill.
   progressBar: {
     width: '100%',
     height: 8,
     backgroundColor: colors.backgroundCard,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
+    borderRadius: 4,
+    overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
+    borderRadius: 4,
     backgroundColor: colors.primary,
   },
   buttonRow: {

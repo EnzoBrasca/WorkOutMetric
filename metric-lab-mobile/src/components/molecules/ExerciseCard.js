@@ -1,11 +1,13 @@
 import { useTranslation } from '../../i18n';
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import OneRmPrompt from './OneRmPrompt';
 import TargetOverrideEditor from './TargetOverrideEditor';
 import { equipmentWeightLabel } from '../../utils/equipment';
 import ExerciseGuideImage from '../atoms/ExerciseGuideImage';
+import ExerciseGuideModal from '../organisms/ExerciseGuideModal';
+import NeumorphicSurface from '../atoms/NeumorphicSurface';
 
 // exercise.planTarget is attached by useTrainScreen when an active mesocycle
 // covers this exercise (see useMesocycleStore's plan). When it's absent this
@@ -38,12 +40,29 @@ export default function ExerciseCard({
   const { colors, fonts } = useTheme();
   const styles = getStyles(colors, fonts);
   const planTarget = exercise.planTarget;
+  const [guideVisible, setGuideVisible] = useState(false);
   return (
-    <View style={styles.exerciseCard}>
+    <>
+    <NeumorphicSurface style={styles.exerciseCard}>
       <View style={styles.cardHeader}>
         <View style={styles.headerLeft}>
           <View style={styles.nameRow}>
-            <ExerciseGuideImage slug={exercise.guide_slug} size={36} />
+            {/* Only the picture opens the walkthrough, not the whole row: the
+                card's other taps edit the routine, and a name that silently
+                opened a modal would be a second meaning for the same area.
+                Without a slug the atom renders nothing, so this wrapper is
+                inert rather than an empty tap target. */}
+            {exercise.guide_slug ? (
+              <TouchableOpacity
+                testID="exercise-guide-open"
+                onPress={() => setGuideVisible(true)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={t('GUIDE_HOW_TO')}
+              >
+                <ExerciseGuideImage slug={exercise.guide_slug} size={36} />
+              </TouchableOpacity>
+            ) : null}
             <Text style={styles.exerciseName} numberOfLines={2}>{exercise.name}</Text>
           </View>
           <View style={styles.weekBadge}>
@@ -57,8 +76,10 @@ export default function ExerciseCard({
               into the workout view on save — a workout the user never asked
               to begin. */}
           {onLog ? (
-            <TouchableOpacity onPress={() => onLog(exercise)} style={styles.logBtn}>
-              <Text style={styles.logText}>{t("LOG")}</Text>
+            <TouchableOpacity onPress={() => onLog(exercise)}>
+              <NeumorphicSurface backgroundColor={colors.primary} radius={12} style={styles.logBtn}>
+                <Text style={styles.logText}>{t("LOG")}</Text>
+              </NeumorphicSurface>
             </TouchableOpacity>
           ) : null}
           {/* Only where the caller can actually act on it. The session view
@@ -129,15 +150,28 @@ export default function ExerciseCard({
       {planTarget?.needsOneRm && (
         <OneRmPrompt onSubmit={(value) => onSetOneRm(exercise.id, value)} loading={isSettingOneRm} />
       )}
-    </View>
+    </NeumorphicSurface>
+    {/* A sibling of the card, not a child: the card's surface clips its
+        contents (overflow: hidden), and the walkthrough is a full-screen
+        sheet rather than part of the card's own box.
+        Mounted only once opened, rather than kept hidden: these cards render
+        one per row of a scrolling list, and an always-mounted sheet would
+        cost every row three more <Image> and a safe-area subscription for a
+        modal almost none of them will ever show. */}
+    {guideVisible ? (
+      <ExerciseGuideModal
+        visible
+        onClose={() => setGuideVisible(false)}
+        exerciseName={exercise.name}
+        slug={exercise.guide_slug}
+      />
+    ) : null}
+    </>
   );
 }
 
 const getStyles = (colors, fonts) => StyleSheet.create({
   exerciseCard: {
-    backgroundColor: colors.backgroundAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
     padding: 16,
   },
   cardHeader: {
@@ -163,8 +197,7 @@ const getStyles = (colors, fonts) => StyleSheet.create({
   },
   weekBadge: {
     backgroundColor: colors.backgroundCard,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
+    borderRadius: 10,
     paddingVertical: 4,
     paddingHorizontal: 8,
   },
@@ -195,7 +228,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     color: colors.textSecondary,
   },
   logBtn: {
-    backgroundColor: colors.primary,
     paddingHorizontal: 10,
     minHeight: 44,
     justifyContent: 'center',

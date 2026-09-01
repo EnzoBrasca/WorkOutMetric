@@ -81,6 +81,27 @@ export function isKnownGuideSlug(slug) {
   return Boolean(slug) && getExercise(slug) !== null;
 }
 
+/**
+ * Every frame of a movement, in order, for the walkthrough view.
+ *
+ * The count comes from the catalog entry rather than a hardcoded 3. Today all
+ * 302 movements ship exactly three frames, but that is the package's choice,
+ * not a contract — reading it here means a catalog bump that adds a fourth
+ * position shows it instead of silently cropping the movement.
+ *
+ * Returns [] for an unknown or missing slug, so a caller can render nothing
+ * without a separate existence check.
+ */
+export function guideFrames(slug) {
+  const exercise = slug ? getExercise(slug) : null;
+  if (!exercise) return [];
+
+  return (exercise.frames ?? []).map((frame) => ({
+    index: frame.index,
+    url: getAssetUrl(slug, frame.index, { version: ASSET_VERSION }),
+  }));
+}
+
 // Catalog names by their normalised form, built once. Used only for exact
 // matching — see resolveGuideSlug for why ranked search is not.
 const SLUG_BY_NORMALISED_NAME = new Map(
