@@ -5,6 +5,7 @@ import { Picker } from '@react-native-picker/picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/useTheme';
 import Button from '../atoms/Button';
+import NeumorphicSurface from '../atoms/NeumorphicSurface';
 
 // Train no longer types a free-text exercise name: it can only pick an
 // existing catalog exercise and join it to the active tab's routine.
@@ -99,7 +100,7 @@ export default function RoutineExerciseModal({
               <>
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>{t("SELECT_EXERCISE")}</Text>
-                  <View style={styles.pickerContainer}>
+                  <NeumorphicSurface variant="pressed" radius={12} style={styles.pickerContainer}>
                     <Picker
                       selectedValue={exerciseId}
                       onValueChange={setExerciseId}
@@ -111,7 +112,7 @@ export default function RoutineExerciseModal({
                         <Picker.Item key={exercise.id} label={exercise.name} value={exercise.id} />
                       ))}
                     </Picker>
-                  </View>
+                  </NeumorphicSurface>
                   {fieldError('exercise') ? (
                     <Text style={styles.fieldError}>{fieldError('exercise')}</Text>
                   ) : null}
@@ -120,28 +121,32 @@ export default function RoutineExerciseModal({
                 <View style={styles.row}>
                   <View style={[styles.inputGroup, { flex: 1 }]}>
                     <Text style={styles.label}>{t("TARGET_SETS_LABEL")}</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={targetSets}
-                      onChangeText={setTargetSets}
-                      keyboardType="numeric"
-                      placeholder="3"
-                      placeholderTextColor={colors.textSecondary}
-                    />
+                    <NeumorphicSurface variant="pressed" radius={12}>
+                      <TextInput
+                        style={styles.input}
+                        value={targetSets}
+                        onChangeText={setTargetSets}
+                        keyboardType="numeric"
+                        placeholder="3"
+                        placeholderTextColor={colors.textSecondary}
+                      />
+                    </NeumorphicSurface>
                     {fieldError('targetSets') ? (
                       <Text style={styles.fieldError}>{fieldError('targetSets')}</Text>
                     ) : null}
                   </View>
                   <View style={[styles.inputGroup, { flex: 1 }]}>
                     <Text style={styles.label}>{t("TARGET_REPS_LABEL")}</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={targetReps}
-                      onChangeText={setTargetReps}
-                      keyboardType="numeric"
-                      placeholder="8"
-                      placeholderTextColor={colors.textSecondary}
-                    />
+                    <NeumorphicSurface variant="pressed" radius={12}>
+                      <TextInput
+                        style={styles.input}
+                        value={targetReps}
+                        onChangeText={setTargetReps}
+                        keyboardType="numeric"
+                        placeholder="8"
+                        placeholderTextColor={colors.textSecondary}
+                      />
+                    </NeumorphicSurface>
                     {fieldError('targetReps') ? (
                       <Text style={styles.fieldError}>{fieldError('targetReps')}</Text>
                     ) : null}
@@ -177,8 +182,10 @@ const getStyles = (colors, fonts) => StyleSheet.create({
   modalContent: {
     backgroundColor: colors.backgroundAlt,
     padding: 24,
-    borderTopWidth: 1,
-    borderColor: colors.border,
+    // Rounded sheet instead of the old hard 1px lip. No shadow of its own: the
+    // dimmed backdrop already separates it from the screen behind.
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     maxHeight: '85%',
   },
   modalTitle: {
@@ -206,9 +213,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: 16,
     color: colors.textPrimary,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    backgroundColor: colors.background,
     padding: 12,
   },
   fieldError: {
@@ -224,15 +228,13 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     marginBottom: 16,
   },
   pickerContainer: {
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    backgroundColor: colors.background,
     overflow: 'hidden',
   },
   picker: {
     height: 50,
     color: colors.textPrimary,
-    backgroundColor: colors.background,
+    // The surface underneath paints the field; an opaque picker would cover it.
+    backgroundColor: 'transparent',
   },
   buttonRow: {
     flexDirection: 'row',

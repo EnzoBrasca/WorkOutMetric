@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { useTheme } from '../../theme/useTheme';
 import Button from '../atoms/Button';
 import ExerciseCard from '../molecules/ExerciseCard';
+import NeumorphicSurface from '../atoms/NeumorphicSurface';
 
 /**
  * How long the workout has been running, as mm:ss (h:mm:ss past the hour).
@@ -78,14 +79,20 @@ export default function WorkoutSessionView({
         </View>
 
         <TouchableOpacity
-          style={[styles.restBtn, isResting && styles.restBtnActive]}
           onPress={() => (isResting ? restTimer.stop() : restTimer.start())}
           activeOpacity={0.8}
           testID="session-rest-toggle"
         >
-          <Text style={[styles.restBtnText, isResting && styles.restBtnTextActive]}>
-            {isResting ? formatRest(restTimer.remainingSec) : t('START_REST')}
-          </Text>
+          <NeumorphicSurface
+            variant={isResting ? 'pressed' : 'raised'}
+            backgroundColor={isResting ? undefined : colors.primary}
+            radius={14}
+            style={styles.restBtn}
+          >
+            <Text style={[styles.restBtnText, isResting && styles.restBtnTextActive]}>
+              {isResting ? formatRest(restTimer.remainingSec) : t('START_REST')}
+            </Text>
+          </NeumorphicSurface>
         </TouchableOpacity>
       </View>
 
@@ -141,8 +148,6 @@ const getStyles = (colors, fonts) =>
       gap: 12,
       paddingHorizontal: 16,
       paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.primary,
       backgroundColor: colors.backgroundAlt,
     },
     clockGroup: {
@@ -166,13 +171,7 @@ const getStyles = (colors, fonts) =>
       paddingHorizontal: 12,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.primary,
       flexShrink: 0,
-    },
-    restBtnActive: {
-      backgroundColor: 'transparent',
-      borderWidth: 1,
-      borderColor: colors.danger,
     },
     restBtnText: {
       fontFamily: fonts.semiBold,
@@ -190,8 +189,6 @@ const getStyles = (colors, fonts) =>
       gap: 24,
       paddingHorizontal: 16,
       paddingVertical: 8,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.borderLight,
     },
     stat: {
       fontFamily: fonts.medium,
@@ -215,8 +212,6 @@ const getStyles = (colors, fonts) =>
     },
     footer: {
       padding: 16,
-      borderTopWidth: 1,
-      borderTopColor: colors.borderAlt,
       backgroundColor: colors.backgroundAlt,
     },
   });

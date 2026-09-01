@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 
 import { Picker } from '@react-native-picker/picker';
 import { useTheme } from '../theme/useTheme';
 import { useProfileScreen } from '../hooks/useProfileScreen';
+import NeumorphicSurface from '../components/atoms/NeumorphicSurface';
 
 export default function ProfileScreen() {
   const { colors, fonts } = useTheme();
@@ -53,30 +54,36 @@ export default function ProfileScreen() {
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>{currentT.username}</Text>
-            <TextInput
-              style={styles.input}
-              value={newUsername}
-              onChangeText={setNewUsername}
-              placeholder="Username"
-              placeholderTextColor={colors.textMuted}
-              autoCapitalize="none"
-            />
+            <NeumorphicSurface variant="pressed" radius={12}>
+              <TextInput
+                style={styles.input}
+                value={newUsername}
+                onChangeText={setNewUsername}
+                placeholder="Username"
+                placeholderTextColor={colors.textMuted}
+                autoCapitalize="none"
+              />
+            </NeumorphicSurface>
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>{currentT.password}</Text>
-            <TextInput
-              style={styles.input}
-              value={newPassword}
-              onChangeText={setNewPassword}
-              placeholder="********"
-              placeholderTextColor={colors.textMuted}
-              secureTextEntry
-            />
+            <NeumorphicSurface variant="pressed" radius={12}>
+              <TextInput
+                style={styles.input}
+                value={newPassword}
+                onChangeText={setNewPassword}
+                placeholder="********"
+                placeholderTextColor={colors.textMuted}
+                secureTextEntry
+              />
+            </NeumorphicSurface>
           </View>
 
-          <TouchableOpacity style={styles.saveButton} onPress={handleUpdate} disabled={loading}>
-            <Text style={styles.saveButtonText}>{loading ? '...' : currentT.save}</Text>
+          <TouchableOpacity onPress={handleUpdate} disabled={loading}>
+            <NeumorphicSurface backgroundColor={colors.primary} radius={14} style={styles.saveButton}>
+              <Text style={styles.saveButtonText}>{loading ? '...' : currentT.save}</Text>
+            </NeumorphicSurface>
           </TouchableOpacity>
         </View>
 
@@ -87,12 +94,16 @@ export default function ProfileScreen() {
             <Text style={styles.settingLabel}>{currentT.theme}</Text>
             <View style={styles.settingOptions}>
               {['dark', 'light', 'custom'].map((opt) => (
-                <TouchableOpacity
-                  key={opt}
-                  style={[styles.optionBtn, theme === opt && styles.optionBtnActive]}
-                  onPress={() => setTheme(opt)}
-                >
-                  <Text style={[styles.optionText, theme === opt && styles.optionTextActive]}>{opt}</Text>
+                <TouchableOpacity key={opt} style={styles.optionBtnTouchable} onPress={() => setTheme(opt)}>
+                  <NeumorphicSurface
+                    variant={theme === opt ? 'pressed' : 'raised'}
+                    backgroundColor={theme === opt ? colors.primary : undefined}
+                    radius={12}
+                    style={styles.optionBtn}
+                    stretch
+                  >
+                    <Text style={[styles.optionText, theme === opt && styles.optionTextActive]}>{opt}</Text>
+                  </NeumorphicSurface>
                 </TouchableOpacity>
               ))}
             </View>
@@ -103,31 +114,43 @@ export default function ProfileScreen() {
               <Text style={styles.label}>SELECT ACCENT COLOR</Text>
               <View style={styles.colorPalette}>
                 {['#FF7300', '#39ff14', '#00FFFF', '#FF00FF', '#FFD700', '#EF4444', '#3B82F6', '#8B5CF6'].map((colorHex) => (
-                  <TouchableOpacity
-                    key={colorHex}
-                    style={[
-                      styles.colorCircle,
-                      { backgroundColor: colorHex },
-                      customColors.primary === colorHex && styles.colorCircleSelected
-                    ]}
-                    onPress={() => handleSelectAccentColor(colorHex)}
-                  />
+                  <TouchableOpacity key={colorHex} onPress={() => handleSelectAccentColor(colorHex)}>
+                    <NeumorphicSurface
+                      variant={customColors.primary === colorHex ? 'pressed' : 'raised'}
+                      backgroundColor={colorHex}
+                      radius={22}
+                      style={[
+                        styles.colorCircle,
+                        customColors.primary === colorHex && styles.colorCircleSelected,
+                      ]}
+                    />
+                  </TouchableOpacity>
                 ))}
               </View>
 
               <Text style={styles.label}>BACKGROUND STYLE</Text>
               <View style={styles.settingOptions}>
-                <TouchableOpacity
-                  style={[styles.optionBtn, customColors.background === '#131313' && styles.optionBtnActive]}
-                  onPress={handleSelectDarkBackground}
-                >
-                  <Text style={[styles.optionText, customColors.background === '#131313' && styles.optionTextActive]}>DARK</Text>
+                <TouchableOpacity style={styles.optionBtnTouchable} onPress={handleSelectDarkBackground}>
+                  <NeumorphicSurface
+                    variant={customColors.background === '#131313' ? 'pressed' : 'raised'}
+                    backgroundColor={customColors.background === '#131313' ? colors.primary : undefined}
+                    radius={12}
+                    style={styles.optionBtn}
+                    stretch
+                  >
+                    <Text style={[styles.optionText, customColors.background === '#131313' && styles.optionTextActive]}>DARK</Text>
+                  </NeumorphicSurface>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.optionBtn, customColors.background === '#ffffff' && styles.optionBtnActive]}
-                  onPress={handleSelectLightBackground}
-                >
-                  <Text style={[styles.optionText, customColors.background === '#ffffff' && styles.optionTextActive]}>LIGHT</Text>
+                <TouchableOpacity style={styles.optionBtnTouchable} onPress={handleSelectLightBackground}>
+                  <NeumorphicSurface
+                    variant={customColors.background === '#ffffff' ? 'pressed' : 'raised'}
+                    backgroundColor={customColors.background === '#ffffff' ? colors.primary : undefined}
+                    radius={12}
+                    style={styles.optionBtn}
+                    stretch
+                  >
+                    <Text style={[styles.optionText, customColors.background === '#ffffff' && styles.optionTextActive]}>LIGHT</Text>
+                  </NeumorphicSurface>
                 </TouchableOpacity>
               </View>
             </View>
@@ -135,7 +158,7 @@ export default function ProfileScreen() {
 
           <View style={styles.settingRow}>
             <Text style={styles.settingLabel}>{currentT.font}</Text>
-            <View style={styles.pickerContainer}>
+            <NeumorphicSurface variant="pressed" radius={12} style={styles.pickerContainer}>
               <Picker
                 selectedValue={font}
                 onValueChange={(itemValue) => setFont(itemValue)}
@@ -149,27 +172,33 @@ export default function ProfileScreen() {
                 <Picker.Item label="Inter" value="Inter" />
                 <Picker.Item label="Open Sans" value="OpenSans" />
               </Picker>
-            </View>
+            </NeumorphicSurface>
           </View>
 
           <View style={styles.settingRow}>
             <Text style={styles.settingLabel}>{currentT.language}</Text>
             <View style={styles.settingOptions}>
               {['en', 'es'].map((opt) => (
-                <TouchableOpacity
-                  key={opt}
-                  style={[styles.optionBtn, language === opt && styles.optionBtnActive]}
-                  onPress={() => setLanguage(opt)}
-                >
-                  <Text style={[styles.optionText, language === opt && styles.optionTextActive]}>{opt.toUpperCase()}</Text>
+                <TouchableOpacity key={opt} style={styles.optionBtnTouchable} onPress={() => setLanguage(opt)}>
+                  <NeumorphicSurface
+                    variant={language === opt ? 'pressed' : 'raised'}
+                    backgroundColor={language === opt ? colors.primary : undefined}
+                    radius={12}
+                    style={styles.optionBtn}
+                    stretch
+                  >
+                    <Text style={[styles.optionText, language === opt && styles.optionTextActive]}>{opt.toUpperCase()}</Text>
+                  </NeumorphicSurface>
                 </TouchableOpacity>
               ))}
             </View>
           </View>
         </View>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-          <Text style={styles.logoutButtonText}>{currentT.logout}</Text>
+        <TouchableOpacity onPress={logout}>
+          <NeumorphicSurface variant="pressed" radius={14} style={styles.logoutButton}>
+            <Text style={styles.logoutButtonText}>{currentT.logout}</Text>
+          </NeumorphicSurface>
         </TouchableOpacity>
 
       </ScrollView>
@@ -225,16 +254,12 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     letterSpacing: 1,
   },
   input: {
-    backgroundColor: colors.backgroundCard,
-    borderWidth: 1,
-    borderColor: colors.border,
     color: colors.textPrimary,
     fontFamily: fonts.regular,
     padding: 12,
     fontSize: 16,
   },
   saveButton: {
-    backgroundColor: colors.primary,
     padding: 16,
     alignItems: 'center',
     marginTop: 8,
@@ -260,16 +285,12 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
-  optionBtn: {
+  optionBtnTouchable: {
     flex: 1,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    alignItems: 'center',
   },
-  optionBtnActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+  optionBtn: {
+    padding: 10,
+    alignItems: 'center',
   },
   optionText: {
     fontFamily: fonts.regular,
@@ -281,8 +302,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     fontFamily: fonts.semiBold,
   },
   logoutButton: {
-    borderWidth: 1,
-    borderColor: colors.danger,
     padding: 16,
     alignItems: 'center',
     marginTop: 16,
@@ -318,14 +337,11 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     transform: [{ scale: 1.1 }],
   },
   pickerContainer: {
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    backgroundColor: colors.backgroundCard,
     overflow: 'hidden',
   },
   picker: {
     height: 50,
     color: colors.textPrimary,
-    backgroundColor: colors.backgroundCard,
+    backgroundColor: 'transparent',
   },
 });

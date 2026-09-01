@@ -5,6 +5,7 @@ import { useTheme } from '../theme/useTheme';
 import { useConfigScreen } from '../hooks/useConfigScreen';
 import AsyncState, { shouldRenderState } from '../components/molecules/AsyncState';
 import Button from '../components/atoms/Button';
+import NeumorphicSurface from '../components/atoms/NeumorphicSurface';
 import MesocycleModal from '../components/organisms/MesocycleModal';
 import ExerciseSuggestions from '../components/molecules/ExerciseSuggestions';
 import { EQUIPMENT_OPTIONS, equipmentWeightLabel } from '../utils/equipment';
@@ -98,7 +99,7 @@ export default function ConfigScreen() {
                 const isPendingDelete = pendingDeleteMesocycleId === mesocycle.id;
 
                 return (
-                  <View key={mesocycle.id} style={styles.liftCard}>
+                  <NeumorphicSurface key={mesocycle.id} style={styles.liftCard}>
                     <View style={styles.liftHeaderRow}>
                       <View style={styles.liftNameGroup}>
                         <Text style={styles.liftName} numberOfLines={1} ellipsizeMode="tail">
@@ -137,7 +138,7 @@ export default function ConfigScreen() {
                         {t('CONFIRM_DELETE_MESOCYCLE_BODY')}
                       </Text>
                     ) : null}
-                  </View>
+                  </NeumorphicSurface>
                 );
               })}
             </View>
@@ -155,14 +156,14 @@ export default function ConfigScreen() {
             <Text style={styles.sectionTitle}>{t("REST_TIMER")}</Text>
           </View>
 
-          <View style={styles.liftRow}>
+          <NeumorphicSurface style={styles.liftRow}>
             <View style={styles.liftInfo}>
               <Text style={styles.liftName}>{t("REST_DURATION_SEC")}</Text>
               {restTimerError ? (
                 <Text style={styles.fieldError}>{t(restTimerError)}</Text>
               ) : null}
             </View>
-            <View style={styles.liftValueBox}>
+            <NeumorphicSurface variant="pressed" style={styles.liftValueBox}>
               <TextInput
                 style={styles.liftInput}
                 value={localRestTimerSeconds}
@@ -170,8 +171,8 @@ export default function ConfigScreen() {
                 keyboardType="numeric"
               />
               <Text style={styles.liftUnit}>{t("SEC")}</Text>
-            </View>
-          </View>
+            </NeumorphicSurface>
+          </NeumorphicSurface>
         </View>
 
         <View style={styles.configSection}>
@@ -179,17 +180,19 @@ export default function ConfigScreen() {
             <Text style={styles.sectionTitle}>{t("EXERCISE_CATALOG")}</Text>
           </View>
 
-          <View style={styles.newExerciseBox}>
+          <NeumorphicSurface style={styles.newExerciseBox}>
             <View style={styles.inputGroup}>
               <Text style={styles.label}>{t("EXERCISE_NAME")}</Text>
-              <TextInput
-                style={styles.input}
-                value={newExerciseName}
-                onChangeText={handleChangeNewExerciseName}
-                placeholder={t("NEW_EXERCISE_NAME_PLACEHOLDER")}
-                placeholderTextColor={colors.textSecondary}
-                maxLength={40}
-              />
+              <NeumorphicSurface variant="pressed" radius={10}>
+                <TextInput
+                  style={styles.input}
+                  value={newExerciseName}
+                  onChangeText={handleChangeNewExerciseName}
+                  placeholder={t("NEW_EXERCISE_NAME_PLACEHOLDER")}
+                  placeholderTextColor={colors.textSecondary}
+                  maxLength={40}
+                />
+              </NeumorphicSurface>
               {createError ? <Text style={styles.fieldError}>{t(createError)}</Text> : null}
               <ExerciseSuggestions
                 suggestions={exerciseSuggestions}
@@ -205,13 +208,19 @@ export default function ConfigScreen() {
                   return (
                     <TouchableOpacity
                       key={option.value}
-                      style={[styles.chip, isSelected && styles.chipSelected]}
                       onPress={() => handleChangeNewExerciseEquipment(option.value)}
                       activeOpacity={0.8}
                     >
-                      <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                        {t(option.labelKey)}
-                      </Text>
+                      <NeumorphicSurface
+                        variant={isSelected ? 'pressed' : 'raised'}
+                        backgroundColor={isSelected ? colors.primary : undefined}
+                        radius={14}
+                        style={styles.chip}
+                      >
+                        <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
+                          {t(option.labelKey)}
+                        </Text>
+                      </NeumorphicSurface>
                     </TouchableOpacity>
                   );
                 })}
@@ -230,13 +239,19 @@ export default function ConfigScreen() {
                     return (
                       <TouchableOpacity
                         key={option.value}
-                        style={[styles.chip, isSelected && styles.chipSelected]}
                         onPress={() => handleChangeNewExerciseUnits(option.value)}
                         activeOpacity={0.8}
                       >
-                        <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                          {t(option.labelKey)}
-                        </Text>
+                        <NeumorphicSurface
+                          variant={isSelected ? 'pressed' : 'raised'}
+                          backgroundColor={isSelected ? colors.primary : undefined}
+                          radius={14}
+                          style={styles.chip}
+                        >
+                          <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
+                            {t(option.labelKey)}
+                          </Text>
+                        </NeumorphicSurface>
                       </TouchableOpacity>
                     );
                   })}
@@ -254,7 +269,7 @@ export default function ConfigScreen() {
             {/* Required by the illustrations' CC BY-SA 4.0 licence. It sits
                 here because this is where they first appear in the app. */}
             <Text style={styles.guideAttribution}>{t('GUIDE_ATTRIBUTION')}</Text>
-          </View>
+          </NeumorphicSurface>
 
           {shouldRenderState(catalogState) ? (
             <AsyncState
@@ -274,17 +289,19 @@ export default function ConfigScreen() {
                 const isLowConfidence = Boolean(lowConfidenceByExerciseId[lift.id]);
 
                 return (
-                  <View key={lift.id} style={styles.liftCard}>
+                  <NeumorphicSurface key={lift.id} style={styles.liftCard}>
                     <View style={styles.liftHeaderRow}>
                       <View style={styles.liftNameGroup}>
                         {isEditingName ? (
-                          <TextInput
-                            style={styles.renameInput}
-                            value={renameValue}
-                            onChangeText={handleChangeRenameValue}
-                            autoFocus
-                            maxLength={40}
-                          />
+                          <NeumorphicSurface variant="pressed" radius={8}>
+                            <TextInput
+                              style={styles.renameInput}
+                              value={renameValue}
+                              onChangeText={handleChangeRenameValue}
+                              autoFocus
+                              maxLength={40}
+                            />
+                          </NeumorphicSurface>
                         ) : (
                           <Text style={styles.liftName} numberOfLines={1} ellipsizeMode="tail">{lift.name}</Text>
                         )}
@@ -327,7 +344,9 @@ export default function ConfigScreen() {
                             {equipmentWeightLabel(t, lift.equipment, lift.equipment_units)}
                           </Text>
                           {lift.isManual ? (
-                            <Text style={styles.manualBadge}>{t('MANUAL_BADGE')}</Text>
+                            <NeumorphicSurface radius={8} style={styles.manualBadge}>
+                              <Text style={styles.manualBadgeText}>{t('MANUAL_BADGE')}</Text>
+                            </NeumorphicSurface>
                           ) : null}
                         </View>
                       </View>
@@ -343,28 +362,32 @@ export default function ConfigScreen() {
 
                     <View style={styles.setRow}>
                       <View style={styles.setInputGroup}>
-                        <TextInput
-                          style={styles.setInput}
-                          value={rowInput.weight || ''}
-                          onChangeText={(text) => handleChangeRowWeight(lift.id, text)}
-                          keyboardType="numeric"
-                          placeholder={t('WEIGHT')}
-                          placeholderTextColor={colors.textSecondary}
-                        />
+                        <NeumorphicSurface variant="pressed" radius={8}>
+                          <TextInput
+                            style={styles.setInput}
+                            value={rowInput.weight || ''}
+                            onChangeText={(text) => handleChangeRowWeight(lift.id, text)}
+                            keyboardType="numeric"
+                            placeholder={t('WEIGHT')}
+                            placeholderTextColor={colors.textSecondary}
+                          />
+                        </NeumorphicSurface>
                         {rowError.weight ? (
                           <Text style={styles.fieldError}>{t(rowError.weight)}</Text>
                         ) : null}
                       </View>
                       <Text style={styles.setSeparator}>×</Text>
                       <View style={styles.setInputGroup}>
-                        <TextInput
-                          style={styles.setInput}
-                          value={rowInput.reps || ''}
-                          onChangeText={(text) => handleChangeRowReps(lift.id, text)}
-                          keyboardType="numeric"
-                          placeholder={t('REPS')}
-                          placeholderTextColor={colors.textSecondary}
-                        />
+                        <NeumorphicSurface variant="pressed" radius={8}>
+                          <TextInput
+                            style={styles.setInput}
+                            value={rowInput.reps || ''}
+                            onChangeText={(text) => handleChangeRowReps(lift.id, text)}
+                            keyboardType="numeric"
+                            placeholder={t('REPS')}
+                            placeholderTextColor={colors.textSecondary}
+                          />
+                        </NeumorphicSurface>
                         {rowError.reps ? (
                           <Text style={styles.fieldError}>{t(rowError.reps)}</Text>
                         ) : null}
@@ -383,7 +406,7 @@ export default function ConfigScreen() {
                     {isLowConfidence ? (
                       <Text style={styles.lowConfidenceText}>{t('LOW_CONFIDENCE_WARNING')}</Text>
                     ) : null}
-                  </View>
+                  </NeumorphicSurface>
                 );
               })}
 
@@ -433,9 +456,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     color: colors.primary,
   },
   newExerciseBox: {
-    backgroundColor: colors.backgroundAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
     padding: 16,
     gap: 12,
   },
@@ -452,9 +472,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: 16,
     color: colors.textPrimary,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    backgroundColor: colors.background,
     padding: 12,
   },
   liftsList: {
@@ -467,8 +484,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
   },
   liftCard: {
     backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
     padding: 16,
     gap: 12,
   },
@@ -490,9 +505,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     fontFamily: fonts.semiBold,
     fontSize: 18,
     color: colors.textPrimary,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    backgroundColor: colors.background,
     padding: 8,
   },
   liftType: {
@@ -543,15 +555,20 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     fontSize: 28,
     color: colors.primary,
   },
+  // A soft raised pill in place of the 1px outline. It cannot lean on a fill
+  // to stand out -- the card under it is already `background`, and a custom
+  // theme collapses `backgroundAlt` onto that same value -- so the shadow is
+  // what separates it in every theme.
   manualBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    flexShrink: 0,
+  },
+  manualBadgeText: {
     fontFamily: fonts.medium,
     fontSize: 10,
     letterSpacing: 0.6,
     color: colors.primaryLight,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
   },
   historyValue: {
     fontFamily: fonts.medium,
@@ -570,9 +587,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: 16,
     color: colors.textPrimary,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    backgroundColor: colors.background,
     padding: 10,
     textAlign: 'center',
   },
@@ -594,8 +608,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
   },
   liftRow: {
     backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
     padding: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -611,9 +623,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     minHeight: 47,
     paddingHorizontal: 8,
     gap: 4,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -652,13 +661,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     minHeight: 44,
     justifyContent: 'center',
     paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    backgroundColor: colors.background,
-  },
-  chipSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary,
   },
   chipText: {
     fontFamily: fonts.medium,

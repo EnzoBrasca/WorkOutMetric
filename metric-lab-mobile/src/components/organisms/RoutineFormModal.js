@@ -15,6 +15,7 @@ import { Picker } from '@react-native-picker/picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/useTheme';
 import Button from '../atoms/Button';
+import NeumorphicSurface from '../atoms/NeumorphicSurface';
 
 // Suggestions, not an enum: `routines.type` is a freeform TEXT column
 // (migration 009) precisely so a user whose split is "Torso / Pierna" is not
@@ -178,15 +179,17 @@ export default function RoutineFormModal({
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>{t('ROUTINE_NAME')}</Text>
-              <TextInput
-                testID="routine-name-input"
-                style={styles.input}
-                value={name}
-                onChangeText={setName}
-                placeholder={t('ROUTINE_NAME_PLACEHOLDER')}
-                placeholderTextColor={colors.textSecondary}
-                maxLength={40}
-              />
+              <NeumorphicSurface variant="pressed" radius={12}>
+                <TextInput
+                  testID="routine-name-input"
+                  style={styles.input}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder={t('ROUTINE_NAME_PLACEHOLDER')}
+                  placeholderTextColor={colors.textSecondary}
+                  maxLength={40}
+                />
+              </NeumorphicSurface>
               {fieldError('name') ? (
                 <Text testID="routine-name-error" style={styles.fieldError}>{fieldError('name')}</Text>
               ) : null}
@@ -194,7 +197,7 @@ export default function RoutineFormModal({
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>{t('ROUTINE_TYPE')}</Text>
-              <View style={styles.pickerContainer}>
+              <NeumorphicSurface variant="pressed" radius={12} style={styles.pickerContainer}>
                 <Picker
                   testID="routine-type-picker"
                   selectedValue={typeChoice}
@@ -208,32 +211,36 @@ export default function RoutineFormModal({
                   ))}
                   <Picker.Item label={t('CUSTOM_TYPE')} value={CUSTOM_TYPE} />
                 </Picker>
-              </View>
+              </NeumorphicSurface>
               {typeChoice === CUSTOM_TYPE ? (
-                <TextInput
-                  testID="routine-custom-type-input"
-                  style={[styles.input, styles.customTypeInput]}
-                  value={customType}
-                  onChangeText={setCustomType}
-                  placeholder={t('CUSTOM_TYPE_PLACEHOLDER')}
-                  placeholderTextColor={colors.textSecondary}
-                  maxLength={24}
-                />
+                <NeumorphicSurface variant="pressed" radius={12} style={styles.customTypeInput}>
+                  <TextInput
+                    testID="routine-custom-type-input"
+                    style={styles.input}
+                    value={customType}
+                    onChangeText={setCustomType}
+                    placeholder={t('CUSTOM_TYPE_PLACEHOLDER')}
+                    placeholderTextColor={colors.textSecondary}
+                    maxLength={24}
+                  />
+                </NeumorphicSurface>
               ) : null}
             </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>{t('ROUTINE_DETAILS')}</Text>
-              <TextInput
-                testID="routine-description-input"
-                style={[styles.input, styles.descriptionInput]}
-                value={description}
-                onChangeText={setDescription}
-                placeholder={t('ROUTINE_DETAILS_PLACEHOLDER')}
-                placeholderTextColor={colors.textSecondary}
-                multiline
-                maxLength={200}
-              />
+              <NeumorphicSurface variant="pressed" radius={12}>
+                <TextInput
+                  testID="routine-description-input"
+                  style={[styles.input, styles.descriptionInput]}
+                  value={description}
+                  onChangeText={setDescription}
+                  placeholder={t('ROUTINE_DETAILS_PLACEHOLDER')}
+                  placeholderTextColor={colors.textSecondary}
+                  multiline
+                  maxLength={200}
+                />
+              </NeumorphicSurface>
             </View>
 
             <View style={styles.inputGroup}>
@@ -246,7 +253,7 @@ export default function RoutineFormModal({
               {catalogOptions.length === 0 ? (
                 <Text style={styles.emptyText}>{t('NO_CATALOG_EXERCISES')}</Text>
               ) : (
-                <View style={styles.exerciseList}>
+                <NeumorphicSurface variant="pressed" radius={16} style={styles.exerciseList}>
                   {catalogOptions.map((exercise) => {
                     const isSelected = selectedIds.includes(exercise.id);
                     const target = targetsById[exercise.id] ?? {};
@@ -276,31 +283,35 @@ export default function RoutineFormModal({
 
                         {isSelected ? (
                           <View style={styles.targetGroup}>
-                            <TextInput
-                              testID={`routine-target-sets-${exercise.id}`}
-                              style={styles.targetInput}
-                              value={String(target.sets ?? '')}
-                              onChangeText={(value) => setTarget(exercise.id, 'sets', value)}
-                              keyboardType="numeric"
-                              maxLength={2}
-                              accessibilityLabel={t('TARGET_SETS_LABEL')}
-                            />
+                            <NeumorphicSurface variant="pressed" radius={8} style={styles.targetWrap}>
+                              <TextInput
+                                testID={`routine-target-sets-${exercise.id}`}
+                                style={styles.targetInput}
+                                value={String(target.sets ?? '')}
+                                onChangeText={(value) => setTarget(exercise.id, 'sets', value)}
+                                keyboardType="numeric"
+                                maxLength={2}
+                                accessibilityLabel={t('TARGET_SETS_LABEL')}
+                              />
+                            </NeumorphicSurface>
                             <Text style={styles.targetSeparator}>x</Text>
-                            <TextInput
-                              testID={`routine-target-reps-${exercise.id}`}
-                              style={styles.targetInput}
-                              value={String(target.reps ?? '')}
-                              onChangeText={(value) => setTarget(exercise.id, 'reps', value)}
-                              keyboardType="numeric"
-                              maxLength={3}
-                              accessibilityLabel={t('TARGET_REPS_LABEL')}
-                            />
+                            <NeumorphicSurface variant="pressed" radius={8} style={styles.targetWrap}>
+                              <TextInput
+                                testID={`routine-target-reps-${exercise.id}`}
+                                style={styles.targetInput}
+                                value={String(target.reps ?? '')}
+                                onChangeText={(value) => setTarget(exercise.id, 'reps', value)}
+                                keyboardType="numeric"
+                                maxLength={3}
+                                accessibilityLabel={t('TARGET_REPS_LABEL')}
+                              />
+                            </NeumorphicSurface>
                           </View>
                         ) : null}
                       </View>
                     );
                   })}
-                </View>
+                </NeumorphicSurface>
               )}
               {fieldError('targets') ? (
                 <Text testID="routine-targets-error" style={styles.fieldError}>
@@ -341,8 +352,11 @@ const getStyles = (colors, fonts) => StyleSheet.create({
   modalContent: {
     backgroundColor: colors.backgroundAlt,
     padding: 24,
-    borderTopWidth: 1,
-    borderColor: colors.border,
+    // A rounded sheet rising out of the overlay, in place of the hard 1px lip
+    // it used to have. No shadow: it sits on a dimmed backdrop, which already
+    // separates it from whatever is behind.
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     maxHeight: '85%',
   },
   modalTitle: {
@@ -366,9 +380,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: 16,
     color: colors.textPrimary,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    backgroundColor: colors.background,
     padding: 12,
   },
   customTypeInput: {
@@ -379,19 +390,16 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     textAlignVertical: 'top',
   },
   pickerContainer: {
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    backgroundColor: colors.background,
     overflow: 'hidden',
   },
   picker: {
     height: 50,
     color: colors.textPrimary,
-    backgroundColor: colors.background,
+    // The surface underneath paints the field; an opaque picker would cover it.
+    backgroundColor: 'transparent',
   },
   exerciseList: {
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
+    paddingVertical: 4,
   },
   exerciseRow: {
     flexDirection: 'row',
@@ -416,16 +424,16 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     gap: 6,
     flexShrink: 0,
   },
+  // The surface holds the width the bordered input used to hold itself.
+  targetWrap: {
+    minWidth: 40,
+  },
   targetInput: {
     fontFamily: fonts.medium,
     fontSize: 14,
     color: colors.textPrimary,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    backgroundColor: colors.background,
     paddingHorizontal: 8,
     paddingVertical: 6,
-    minWidth: 40,
     textAlign: 'center',
   },
   targetSeparator: {
@@ -439,8 +447,13 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: 8,
   },
+  // A quiet fill rather than a surface of its own: the rows sit inside the
+  // sunken list, and a shadow per row on top of a shadow per input would be a
+  // lot of drawing for a list that can hold the whole catalog.
   exerciseRowSelected: {
     backgroundColor: colors.background,
+    borderRadius: 12,
+    marginHorizontal: 4,
   },
   checkbox: {
     fontFamily: fonts.medium,

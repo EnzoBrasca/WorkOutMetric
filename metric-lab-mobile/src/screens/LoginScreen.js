@@ -1,9 +1,11 @@
 import { useTranslation } from '../i18n';
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/useTheme';
 import { useAuthStore } from '../store/useAuthStore';
+import Button from '../components/atoms/Button';
+import NeumorphicSurface from '../components/atoms/NeumorphicSurface';
 
 export default function LoginScreen({ navigation }) {
   const t = useTranslation();
@@ -50,35 +52,43 @@ export default function LoginScreen({ navigation }) {
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>{t("USERNAME")}</Text>
-          <TextInput
-            style={styles.input}
-            value={username}
-            onChangeText={setUsername}
-            placeholder={t("USERNAME")}
-            placeholderTextColor={colors.textSecondary}
-            autoCapitalize="none"
-          />
+          <NeumorphicSurface variant="pressed" radius={12}>
+            <TextInput
+              style={styles.input}
+              value={username}
+              onChangeText={setUsername}
+              placeholder={t("USERNAME")}
+              placeholderTextColor={colors.textSecondary}
+              autoCapitalize="none"
+            />
+          </NeumorphicSurface>
         </View>
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>{t("PASSWORD")}</Text>
-          <TextInput
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-            placeholder={t("PASSWORD")}
-            placeholderTextColor={colors.textSecondary}
-            secureTextEntry
-          />
+          <NeumorphicSurface variant="pressed" radius={12}>
+            <TextInput
+              style={styles.input}
+              value={password}
+              onChangeText={setPassword}
+              placeholder={t("PASSWORD")}
+              placeholderTextColor={colors.textSecondary}
+              secureTextEntry
+            />
+          </NeumorphicSurface>
         </View>
 
-        <TouchableOpacity style={styles.primaryBtn} onPress={handleLogin} activeOpacity={0.8} disabled={isLoading}>
-          {isLoading ? (
-            <ActivityIndicator color={colors.background} />
-          ) : (
-            <Text style={styles.primaryBtnText}>{t("LOGIN")}</Text>
-          )}
-        </TouchableOpacity>
+        {/* The shared atom rather than a hand-rolled button: it already owns
+            the raised surface, the loading spinner and the disabled state, and
+            a snowflake button here is how this screen fell behind the restyle
+            in the first place. */}
+        <Button
+          label={t("LOGIN")}
+          onPress={handleLogin}
+          variant="primary"
+          loading={isLoading}
+          style={styles.submitBtn}
+        />
 
         <TouchableOpacity 
           style={styles.linkBtn} 
@@ -140,26 +150,19 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     marginBottom: 8,
     letterSpacing: 1,
   },
+  // The sunken surface around it paints the field now.
   input: {
     fontFamily: fonts.regular,
     fontSize: 16,
     color: colors.textPrimary,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    backgroundColor: colors.backgroundAlt,
     padding: 16,
   },
-  primaryBtn: {
-    backgroundColor: colors.primary,
-    padding: 16,
-    alignItems: 'center',
+  // A little taller than the atom's default: it is the only action on an
+  // otherwise empty screen, and it lost some presence when the hand-rolled
+  // 18px/wide-tracked label became the app's standard button type.
+  submitBtn: {
+    paddingVertical: 18,
     marginTop: 12,
-  },
-  primaryBtnText: {
-    fontFamily: fonts.semiBold,
-    fontSize: 18,
-    color: colors.background,
-    letterSpacing: 2,
   },
   linkBtn: {
     marginTop: 24,

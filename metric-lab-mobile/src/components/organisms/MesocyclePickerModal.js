@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity } from 'rea
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/useTheme';
 import Button from '../atoms/Button';
+import NeumorphicSurface from '../atoms/NeumorphicSurface';
 
 // Train's activate control: pick which block is running, nothing else.
 //
@@ -42,23 +43,32 @@ export default function MesocyclePickerModal({
                 return (
                   <TouchableOpacity
                     key={mesocycle.id}
-                    style={[styles.row, isActive && styles.rowActive]}
+                    style={styles.rowTouchable}
                     onPress={() => onSelect(mesocycle.id)}
                     activeOpacity={0.8}
                     testID={`mesocycle-option-${mesocycle.id}`}
                   >
-                    <View style={styles.rowInfo}>
-                      <Text style={styles.rowName} numberOfLines={1} ellipsizeMode="tail">
-                        {mesocycle.name}
-                      </Text>
-                      <Text style={styles.rowMeta}>
-                        {t('WEEKS_SHORT')} {mesocycle.current_week}/{mesocycle.total_weeks}
-                        {isActive ? ` · ${t('ACTIVE')}` : ''}
-                      </Text>
-                    </View>
-                    {!isActive ? (
-                      <Text style={styles.selectText}>{t('SWITCH_MESOCYCLE')}</Text>
-                    ) : null}
+                    {/* The running block reads as pressed in rather than as an
+                        outlined one -- the same active vocabulary the routine
+                        tabs and the theme options use. */}
+                    <NeumorphicSurface
+                      variant={isActive ? 'pressed' : 'raised'}
+                      radius={16}
+                      style={styles.row}
+                    >
+                      <View style={styles.rowInfo}>
+                        <Text style={styles.rowName} numberOfLines={1} ellipsizeMode="tail">
+                          {mesocycle.name}
+                        </Text>
+                        <Text style={styles.rowMeta}>
+                          {t('WEEKS_SHORT')} {mesocycle.current_week}/{mesocycle.total_weeks}
+                          {isActive ? ` · ${t('ACTIVE')}` : ''}
+                        </Text>
+                      </View>
+                      {!isActive ? (
+                        <Text style={styles.selectText}>{t('SWITCH_MESOCYCLE')}</Text>
+                      ) : null}
+                    </NeumorphicSurface>
                   </TouchableOpacity>
                 );
               })
@@ -89,8 +99,10 @@ const getStyles = (colors, fonts) =>
     modalContent: {
       backgroundColor: colors.backgroundAlt,
       padding: 24,
-      borderTopWidth: 1,
-      borderColor: colors.border,
+      // Rounded sheet instead of the old hard 1px lip. No shadow of its own:
+      // the dimmed backdrop already separates it from the screen behind.
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
       maxHeight: '85%',
     },
     modalTitle: {
@@ -118,18 +130,15 @@ const getStyles = (colors, fonts) =>
       letterSpacing: 1.2,
       color: colors.primary,
     },
+    rowTouchable: {
+      marginBottom: 8,
+    },
     row: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      borderWidth: 1,
-      borderColor: colors.borderAlt,
       padding: 12,
-      marginBottom: 8,
       gap: 12,
-    },
-    rowActive: {
-      borderColor: colors.primary,
     },
     rowInfo: {
       flex: 1,

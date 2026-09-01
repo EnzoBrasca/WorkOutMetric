@@ -6,6 +6,7 @@ import { useRoutinesScreen } from '../hooks/useRoutinesScreen';
 import AsyncState, { shouldRenderState } from '../components/molecules/AsyncState';
 import RoutineFormModal from '../components/organisms/RoutineFormModal';
 import Button from '../components/atoms/Button';
+import NeumorphicSurface from '../components/atoms/NeumorphicSurface';
 
 export default function RoutinesScreen() {
   const t = useTranslation();
@@ -56,7 +57,7 @@ export default function RoutinesScreen() {
               const isPendingDelete = pendingDeleteId === routine.id;
 
               return (
-                <View key={routine.id} style={styles.routineCard}>
+                <NeumorphicSurface key={routine.id} style={styles.routineCard}>
                   <View style={styles.routineHeaderRow}>
                     <View style={styles.routineNameGroup}>
                       <Text style={styles.routineName} numberOfLines={1} ellipsizeMode="tail">
@@ -89,7 +90,7 @@ export default function RoutinesScreen() {
                       {routine.description}
                     </Text>
                   ) : null}
-                </View>
+                </NeumorphicSurface>
               );
             })}
           </View>
@@ -133,9 +134,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     gap: 16,
   },
   routineCard: {
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    backgroundColor: colors.backgroundAlt,
     padding: 16,
     gap: 8,
   },

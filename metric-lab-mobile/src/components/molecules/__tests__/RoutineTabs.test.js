@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
+import { render, screen, fireEvent, act } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import RoutineTabs from '../RoutineTabs';
 
@@ -50,6 +50,37 @@ describe('RoutineTabs', () => {
 
     expect(style.height).toBeUndefined();
     expect(style.minHeight).toBe(48);
+  });
+
+  // The bar measures itself and only then knows how wide a third of it is.
+  // fireEvent's 'layout' does not reach the handler under RNTL, so the tests
+  // below hand the component the measurement the platform would give it.
+  const measureBar = async (width) => {
+    const onLayout = screen.getByTestId('routine-tabs').props.onLayout;
+    await act(async () => {
+      onLayout({ nativeEvent: { layout: { width, height: 48 } } });
+    });
+  };
+
+  // The bar shows three routines at a time and swipes a whole group, so the
+  // snap interval has to be a full page wide -- three tabs plus the gap that
+  // trails each one -- or the next group lands mid-tab.
+  it('snaps a whole group of three once there are more routines than fit', async () => {
+    const many = [...ROUTINES, { id: 'routine-4', name: 'Cuarta', type: null }];
+    await render(<RoutineTabs routines={many} activeRoutineId="routine-1" onSelect={() => {}} />);
+
+    await measureBar(320);
+
+    // Three tabs of (320 - 2 gaps) / 3, each trailed by its 8px gap.
+    expect(screen.getByTestId('routine-tabs-scroll').props.snapToInterval).toBeCloseTo(328);
+  });
+
+  it('leaves the tabs sharing the bar when they all fit on one page', async () => {
+    await render(<RoutineTabs routines={ROUTINES} activeRoutineId="routine-1" onSelect={() => {}} />);
+
+    await measureBar(320);
+
+    expect(screen.getByTestId('routine-tabs-scroll').props.snapToInterval).toBeUndefined();
   });
 
   it('renders nothing when the user has no routines yet', async () => {

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
 import Svg, { Path, Polygon, Rect } from 'react-native-svg';
 import { useTheme } from '../../theme/useTheme';
+import NeumorphicSurface from '../atoms/NeumorphicSurface';
 
 // The editor lives inside a stat cell that is only half a card wide, so the
 // controls are drawn as bare 12x12 glyphs rather than Button atoms -- a Button
@@ -133,21 +134,25 @@ export default function TargetOverrideEditor({ sets, reps, hasOverride, editable
   return (
     <View style={styles.editorContainer}>
       <View style={styles.row}>
-        <TextInput
-          style={styles.input}
-          value={setsText}
-          onChangeText={setSetsText}
-          keyboardType="numeric"
-          placeholderTextColor={colors.textSecondary}
-        />
+        <NeumorphicSurface variant="pressed" radius={8} style={styles.inputWrap}>
+          <TextInput
+            style={styles.input}
+            value={setsText}
+            onChangeText={setSetsText}
+            keyboardType="numeric"
+            placeholderTextColor={colors.textSecondary}
+          />
+        </NeumorphicSurface>
         <Text style={styles.xSeparator}>x</Text>
-        <TextInput
-          style={styles.input}
-          value={repsText}
-          onChangeText={setRepsText}
-          keyboardType="numeric"
-          placeholderTextColor={colors.textSecondary}
-        />
+        <NeumorphicSurface variant="pressed" radius={8} style={styles.inputWrap}>
+          <TextInput
+            style={styles.input}
+            value={repsText}
+            onChangeText={setRepsText}
+            keyboardType="numeric"
+            placeholderTextColor={colors.textSecondary}
+          />
+        </NeumorphicSurface>
       </View>
       {error && <Text style={styles.errorText}>{t(error)}</Text>}
       <View style={styles.buttonRow}>
@@ -197,14 +202,14 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     fontSize: 16,
     color: colors.textSecondary,
   },
-  input: {
+  // The surface carries the flex now -- the input fills it.
+  inputWrap: {
     flex: 1,
+  },
+  input: {
     fontFamily: fonts.semiBold,
     fontSize: 18,
     color: colors.textPrimary,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    backgroundColor: colors.background,
     padding: 8,
     textAlign: 'center',
   },

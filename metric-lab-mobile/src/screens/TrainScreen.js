@@ -12,6 +12,7 @@ import MesocyclePanel from '../components/organisms/MesocyclePanel';
 import MesocyclePickerModal from '../components/organisms/MesocyclePickerModal';
 import WorkoutSessionView from '../components/organisms/WorkoutSessionView';
 import Button from '../components/atoms/Button';
+import NeumorphicSurface from '../components/atoms/NeumorphicSurface';
 import AsyncState, { shouldRenderState } from '../components/molecules/AsyncState';
 import { useTrainScreen } from '../hooks/useTrainScreen';
 
@@ -130,10 +131,10 @@ export default function TrainScreen() {
         />
 
         {!hasRoutines && !isLoading ? (
-          <View style={styles.noRoutineBox}>
+          <NeumorphicSurface variant="pressed" style={styles.noRoutineBox}>
             <Text style={styles.noRoutineText}>{t('NO_ROUTINES_YET')}</Text>
             <Text style={styles.noRoutineHint}>{t('CREATE_ROUTINE_IN_ROUTINES_TAB')}</Text>
-          </View>
+          </NeumorphicSurface>
         ) : (
           <>
             {(() => {
@@ -167,11 +168,13 @@ export default function TrainScreen() {
               );
             })()}
 
-            <TouchableOpacity style={styles.addExerciseBtn} onPress={handleOpenAdd} activeOpacity={0.8}>
-              <Svg width="14" height="14" viewBox="0 0 14 14" fill={colors.primary}>
-                <Path d="M 6 8 L 0 8 L 0 6 L 6 6 L 6 0 L 8 0 L 8 6 L 14 6 L 14 8 L 8 8 L 8 14 L 6 14 L 6 8 L 6 8" />
-              </Svg>
-              <Text style={styles.addExerciseText}>{t("ADD_EXERCISE")}</Text>
+            <TouchableOpacity onPress={handleOpenAdd} activeOpacity={0.8}>
+              <NeumorphicSurface style={styles.addExerciseBtn}>
+                <Svg width="14" height="14" viewBox="0 0 14 14" fill={colors.primary}>
+                  <Path d="M 6 8 L 0 8 L 0 6 L 6 6 L 6 0 L 8 0 L 8 6 L 14 6 L 14 8 L 8 8 L 8 14 L 6 14 L 6 8 L 6 8" />
+                </Svg>
+                <Text style={styles.addExerciseText}>{t("ADD_EXERCISE")}</Text>
+              </NeumorphicSurface>
             </TouchableOpacity>
           </>
         )}
@@ -218,8 +221,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
   },
   addExerciseBtn: {
     minHeight: 58,
-    borderWidth: 1,
-    borderColor: colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -233,9 +234,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     color: colors.primary,
   },
   noRoutineBox: {
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    backgroundColor: colors.backgroundAlt,
     padding: 24,
     alignItems: 'center',
     gap: 16,

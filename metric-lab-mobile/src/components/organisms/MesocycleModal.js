@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, Modal, TextInput, KeyboardAvoidingView, Platfor
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/useTheme';
 import Button from '../atoms/Button';
+import NeumorphicSurface from '../atoms/NeumorphicSurface';
 
 const DEFAULT_TOTAL_WEEKS = '4';
 const DEFAULT_START_PCT = '60';
@@ -99,48 +100,56 @@ export default function MesocycleModal({ visible, onClose, onSave, isSaving }) {
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>{t("MESOCYCLE_NAME")}</Text>
-              <TextInput
-                style={styles.input}
-                value={name}
-                onChangeText={setName}
-                placeholder={t("MESOCYCLE_NAME_PLACEHOLDER")}
-                placeholderTextColor={colors.textSecondary}
-                maxLength={40}
-              />
+              <NeumorphicSurface variant="pressed" radius={12}>
+                <TextInput
+                  style={styles.input}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder={t("MESOCYCLE_NAME_PLACEHOLDER")}
+                  placeholderTextColor={colors.textSecondary}
+                  maxLength={40}
+                />
+              </NeumorphicSurface>
             </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>{t("TOTAL_WEEKS")}</Text>
-              <TextInput
-                style={styles.input}
-                value={totalWeeks}
-                onChangeText={setTotalWeeks}
-                keyboardType="numeric"
-                placeholderTextColor={colors.textSecondary}
-              />
+              <NeumorphicSurface variant="pressed" radius={12}>
+                <TextInput
+                  style={styles.input}
+                  value={totalWeeks}
+                  onChangeText={setTotalWeeks}
+                  keyboardType="numeric"
+                  placeholderTextColor={colors.textSecondary}
+                />
+              </NeumorphicSurface>
             </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>{t("START_PCT")}</Text>
-              <TextInput
-                style={styles.input}
-                value={startPct}
-                onChangeText={setStartPct}
-                keyboardType="numeric"
-                placeholderTextColor={colors.textSecondary}
-              />
+              <NeumorphicSurface variant="pressed" radius={12}>
+                <TextInput
+                  style={styles.input}
+                  value={startPct}
+                  onChangeText={setStartPct}
+                  keyboardType="numeric"
+                  placeholderTextColor={colors.textSecondary}
+                />
+              </NeumorphicSurface>
             </View>
 
             {showIncrementField && (
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>{t("INCREMENT_PCT")}</Text>
-                <TextInput
-                  style={styles.input}
-                  value={incrementPct}
-                  onChangeText={setIncrementPct}
-                  keyboardType="numeric"
-                  placeholderTextColor={colors.textSecondary}
-                />
+                <NeumorphicSurface variant="pressed" radius={12}>
+                  <TextInput
+                    style={styles.input}
+                    value={incrementPct}
+                    onChangeText={setIncrementPct}
+                    keyboardType="numeric"
+                    placeholderTextColor={colors.textSecondary}
+                  />
+                </NeumorphicSurface>
               </View>
             )}
 
@@ -163,24 +172,28 @@ export default function MesocycleModal({ visible, onClose, onSave, isSaving }) {
               <View style={styles.row}>
                 <View style={[styles.inputGroup, { flex: 1 }]}>
                   <Text style={styles.label}>{t("DELOAD_WEEK")}</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={deloadWeek}
-                    onChangeText={setDeloadWeek}
-                    keyboardType="numeric"
-                    placeholder="e.g. 4"
-                    placeholderTextColor={colors.textSecondary}
-                  />
+                  <NeumorphicSurface variant="pressed" radius={12}>
+                    <TextInput
+                      style={styles.input}
+                      value={deloadWeek}
+                      onChangeText={setDeloadWeek}
+                      keyboardType="numeric"
+                      placeholder="e.g. 4"
+                      placeholderTextColor={colors.textSecondary}
+                    />
+                  </NeumorphicSurface>
                 </View>
                 <View style={[styles.inputGroup, { flex: 1 }]}>
                   <Text style={styles.label}>{t("DELOAD_PCT")}</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={deloadPct}
-                    onChangeText={setDeloadPct}
-                    keyboardType="numeric"
-                    placeholderTextColor={colors.textSecondary}
-                  />
+                  <NeumorphicSurface variant="pressed" radius={12}>
+                    <TextInput
+                      style={styles.input}
+                      value={deloadPct}
+                      onChangeText={setDeloadPct}
+                      keyboardType="numeric"
+                      placeholderTextColor={colors.textSecondary}
+                    />
+                  </NeumorphicSurface>
                 </View>
               </View>
             )}
@@ -211,8 +224,11 @@ const getStyles = (colors, fonts) => StyleSheet.create({
   modalContent: {
     backgroundColor: colors.backgroundAlt,
     padding: 24,
-    borderTopWidth: 1,
-    borderColor: colors.border,
+    // A rounded sheet rising out of the overlay, in place of the hard 1px lip
+    // it used to have. No shadow: it sits on a dimmed backdrop, which already
+    // separates it from whatever is behind.
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     maxHeight: '85%',
   },
   modalTitle: {
@@ -242,13 +258,12 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     marginBottom: 8,
     letterSpacing: 1,
   },
+  // The sunken surface around it paints the field now, so the input itself
+  // carries nothing but type and padding.
   input: {
     fontFamily: fonts.regular,
     fontSize: 16,
     color: colors.textPrimary,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    backgroundColor: colors.background,
     padding: 12,
   },
   settingRow: {

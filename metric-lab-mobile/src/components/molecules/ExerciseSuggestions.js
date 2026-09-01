@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTranslation } from '../../i18n';
 import { useTheme } from '../../theme/useTheme';
 import ExerciseGuideImage from '../atoms/ExerciseGuideImage';
+import NeumorphicSurface from '../atoms/NeumorphicSurface';
 
 // Catalog matches for the name being typed into the new-exercise form.
 //
@@ -17,7 +18,7 @@ export default function ExerciseSuggestions({ suggestions, onSelect }) {
   if (!suggestions.length) return null;
 
   return (
-    <View style={styles.container}>
+    <NeumorphicSurface variant="pressed" radius={16} style={styles.container}>
       <Text style={styles.hint}>{t('GUIDE_SUGGESTIONS_HINT')}</Text>
       {suggestions.map((suggestion) => (
         <TouchableOpacity
@@ -35,16 +36,18 @@ export default function ExerciseSuggestions({ suggestions, onSelect }) {
           </View>
         </TouchableOpacity>
       ))}
-    </View>
+    </NeumorphicSurface>
   );
 }
 
 const getStyles = (colors, fonts) => StyleSheet.create({
+  // Sunken rather than bordered: it reads as a well the matches drop into,
+  // below the (also sunken) name field it belongs to. No backgroundColor of
+  // its own -- the surface's default already sits on the form's card, and a
+  // lighter fill would fight the recessed shadow.
   container: {
     marginTop: 8,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    backgroundColor: colors.backgroundCard,
+    paddingBottom: 4,
   },
   hint: {
     fontFamily: fonts.medium,

@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-nat
 import Svg, { Rect } from 'react-native-svg';
 import { useTheme } from '../theme/useTheme';
 import Button from '../components/atoms/Button';
+import NeumorphicSurface from '../components/atoms/NeumorphicSurface';
 import SessionHistoryRow from '../components/molecules/SessionHistoryRow';
 import { useLogsScreen } from '../hooks/useLogsScreen';
 
@@ -51,26 +52,31 @@ export default function LogsScreen() {
           </View>
         ) : (
           <View style={styles.table}>
-            <View style={styles.tableHeaderRow}>
-              <Text style={[styles.th, styles.colLeft]}>{t('DATE')}</Text>
-              <Text style={[styles.th, styles.colCenter]}>{t('VOLUME')}</Text>
-              <Text style={[styles.th, styles.colRight]}>{t('DELTA')}</Text>
-            </View>
-            {history.map((session) => (
-              <SessionHistoryRow
-                key={session.id}
-                session={session}
-                expanded={selectedSessionId === session.id}
-                onPress={() => handleSelectSession(session.id)}
-              />
-            ))}
+            <NeumorphicSurface style={styles.tableSurface}>
+              <View style={styles.tableHeaderRow}>
+                <Text style={[styles.th, styles.colLeft]}>{t('DATE')}</Text>
+                <Text style={[styles.th, styles.colCenter]}>{t('VOLUME')}</Text>
+                <Text style={[styles.th, styles.colRight]}>{t('DELTA')}</Text>
+              </View>
+              {history.map((session) => (
+                <SessionHistoryRow
+                  key={session.id}
+                  session={session}
+                  expanded={selectedSessionId === session.id}
+                  onPress={() => handleSelectSession(session.id)}
+                />
+              ))}
+            </NeumorphicSurface>
+            {/* Outside the surface, not inside it: a raised button sitting on
+                a raised card reads as two stacked shadows, and this acts on
+                the list as a whole rather than on any row in it. */}
             {hasMore && (
               <Button
                 label={t('LOAD_MORE')}
                 onPress={handleLoadMore}
                 loading={isLoadingMore}
                 variant="secondary"
-                style={styles.stateBtn}
+                style={styles.loadMoreBtn}
               />
             )}
           </View>
@@ -123,13 +129,26 @@ const getStyles = (colors, fonts) => StyleSheet.create({
   stateBtn: {
     minWidth: 160,
   },
+  loadMoreBtn: {
+    alignSelf: 'center',
+    minWidth: 160,
+  },
+  // A plain wrapper now -- the card is the surface inside it, and LOAD_MORE
+  // sits below that rather than within it.
   table: {
-    borderWidth: 1,
-    borderColor: colors.borderLight,
+    gap: 16,
+  },
+  tableSurface: {
+    // Keeps the last row's separator off the surface's rounded bottom edge,
+    // where a full-width rule clipped by the corner radius reads as broken.
+    paddingBottom: 4,
   },
   tableHeaderRow: {
     minHeight: 41,
-    backgroundColor: colors.backgroundAlt,
+    // No fill of its own any more: it used to be backgroundAlt against a
+    // background-coloured table, and the surface it now sits in is already
+    // that colour. The rule below it is what separates head from body --
+    // dividers stay flat throughout this app.
     borderBottomWidth: 1,
     borderBottomColor: colors.borderLight,
     flexDirection: 'row',

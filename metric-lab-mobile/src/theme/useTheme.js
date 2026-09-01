@@ -1,5 +1,6 @@
 import { useSettingsStore } from '../store/useSettingsStore';
 import { colors as defaultColors } from './colors';
+import { NEUMORPHIC_RADIUS, neumorphicShadows } from './neumorphism';
 
 export const lightTheme = {
   ...defaultColors,
@@ -40,6 +41,16 @@ export function useTheme() {
       borderAlt: customColors.primary,
     };
   }
+
+  // Neumorphic surfaces (NeumorphicSurface) derive their light/dark shadow
+  // tints from whichever background is actually in play -- dark, light or a
+  // user-picked custom one -- so the soft-UI look keeps working under every
+  // personalization choice instead of assuming a fixed palette.
+  colors = {
+    ...colors,
+    radius: NEUMORPHIC_RADIUS,
+    ...neumorphicShadows(colors.backgroundAlt || colors.background),
+  };
 
   // Dynamic Fonts
   let fonts = {

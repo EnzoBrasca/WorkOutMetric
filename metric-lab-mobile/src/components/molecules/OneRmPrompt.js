@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import Button from '../atoms/Button';
+import NeumorphicSurface from '../atoms/NeumorphicSurface';
 
 // Shown wherever a mesocycle plan target has needsOneRm: true — the exercise
 // has no 1RM on record, so targetWeight is null and there's nothing honest to
@@ -24,14 +25,16 @@ export default function OneRmPrompt({ onSubmit, loading }) {
     <View style={styles.container}>
       <Text style={styles.label}>{t("NEEDS_ONE_RM")}</Text>
       <View style={styles.row}>
-        <TextInput
-          style={styles.input}
-          value={value}
-          onChangeText={setValue}
-          keyboardType="numeric"
-          placeholder="e.g. 100"
-          placeholderTextColor={colors.textSecondary}
-        />
+        <NeumorphicSurface variant="pressed" radius={10} style={styles.inputWrap}>
+          <TextInput
+            style={styles.input}
+            value={value}
+            onChangeText={setValue}
+            keyboardType="numeric"
+            placeholder="e.g. 100"
+            placeholderTextColor={colors.textSecondary}
+          />
+        </NeumorphicSurface>
         <Button
           label={t("SET_ONE_RM")}
           onPress={handleSubmit}
@@ -63,14 +66,14 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
-  input: {
+  // The surface carries the flex now -- the input fills it.
+  inputWrap: {
     flex: 1,
+  },
+  input: {
     fontFamily: fonts.semiBold,
     fontSize: 16,
     color: colors.textPrimary,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    backgroundColor: colors.background,
     padding: 10,
     textAlign: 'center',
   },

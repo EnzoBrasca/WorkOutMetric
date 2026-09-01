@@ -3,6 +3,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import WeekSelector from '../molecules/WeekSelector';
+import NeumorphicSurface from '../atoms/NeumorphicSurface';
 
 // Sits above the exercise list, and does exactly two things now: show which
 // week of the block is running (and let the user move between weeks), plus one
@@ -25,12 +26,12 @@ export default function MesocyclePanel({
 
   if (!activeMesocycle) {
     return (
-      <View style={styles.emptyContainer}>
+      <NeumorphicSurface style={styles.emptyContainer}>
         <Text style={styles.emptyLabel}>{t('NO_ACTIVE_MESOCYCLE')}</Text>
         <TouchableOpacity onPress={onActivatePress} testID="mesocycle-activate">
           <Text style={styles.emptyAction}>{t('ACTIVATE_MESOCYCLE')}</Text>
         </TouchableOpacity>
-      </View>
+      </NeumorphicSurface>
     );
   }
 
@@ -40,7 +41,7 @@ export default function MesocyclePanel({
   const currentWeek = plan?.week ?? activeMesocycle.current_week;
 
   return (
-    <View style={styles.container}>
+    <NeumorphicSurface style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.name} numberOfLines={1} ellipsizeMode="tail">
           {activeMesocycle.name}
@@ -58,14 +59,12 @@ export default function MesocyclePanel({
         onNextWeek={onChangeWeek}
         disabled={isPlanLoading}
       />
-    </View>
+    </NeumorphicSurface>
   );
 }
 
 const getStyles = (colors, fonts) => StyleSheet.create({
   emptyContainer: {
-    borderWidth: 1,
-    borderColor: colors.primary,
     padding: 16,
     alignItems: 'center',
     gap: 8,
@@ -84,9 +83,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     color: colors.primary,
   },
   container: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.backgroundAlt,
     padding: 16,
     marginBottom: 16,
     gap: 12,

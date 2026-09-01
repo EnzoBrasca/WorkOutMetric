@@ -2,6 +2,7 @@ import { useTranslation } from '../../i18n';
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
+import NeumorphicSurface from '../atoms/NeumorphicSurface';
 
 // Lets the user see and change which week of the active mesocycle they're
 // training. currentWeek/totalWeeks come from the mesocycle row; isDeload
@@ -18,11 +19,15 @@ export default function WeekSelector({ currentWeek, totalWeeks, isDeload, onPrev
   return (
     <View style={styles.container}>
       <TouchableOpacity
-        style={[styles.arrowBtn, (atFirstWeek || disabled) && styles.arrowBtnDisabled]}
         onPress={() => onPrevWeek(currentWeek - 1)}
         disabled={atFirstWeek || disabled}
       >
-        <Text style={styles.arrowText}>‹</Text>
+        <NeumorphicSurface
+          radius={16}
+          style={[styles.arrowBtn, (atFirstWeek || disabled) && styles.arrowBtnDisabled]}
+        >
+          <Text style={styles.arrowText}>‹</Text>
+        </NeumorphicSurface>
       </TouchableOpacity>
 
       <View style={styles.centerBox}>
@@ -35,11 +40,15 @@ export default function WeekSelector({ currentWeek, totalWeeks, isDeload, onPrev
       </View>
 
       <TouchableOpacity
-        style={[styles.arrowBtn, (atLastWeek || disabled) && styles.arrowBtnDisabled]}
         onPress={() => onNextWeek(currentWeek + 1)}
         disabled={atLastWeek || disabled}
       >
-        <Text style={styles.arrowText}>›</Text>
+        <NeumorphicSurface
+          radius={16}
+          style={[styles.arrowBtn, (atLastWeek || disabled) && styles.arrowBtnDisabled]}
+        >
+          <Text style={styles.arrowText}>›</Text>
+        </NeumorphicSurface>
       </TouchableOpacity>
     </View>
   );
@@ -57,9 +66,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    backgroundColor: colors.background,
   },
   arrowBtnDisabled: {
     opacity: 0.3,
@@ -83,6 +89,7 @@ const getStyles = (colors, fonts) => StyleSheet.create({
   },
   deloadBadge: {
     backgroundColor: colors.danger,
+    borderRadius: 10,
     paddingVertical: 2,
     paddingHorizontal: 8,
   },
