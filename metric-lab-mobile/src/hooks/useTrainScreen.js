@@ -56,6 +56,7 @@ export function useTrainScreen() {
   } = useMesocycleStore();
 
   const {
+    activeSession,
     activeSummary,
     isLoadingActive,
     isStartingSession,
@@ -196,6 +197,22 @@ export function useTrainScreen() {
     ]
   );
 
+  // Exercises already logged in the open session, keyed by id -- set_logs
+  // comes back embedded on activeSession (see sessionsRepository), each row
+  // carrying the exercise_id it was recorded against.
+  const loggedExerciseIds = useMemo(
+    () => new Set((activeSession?.set_logs ?? []).map((log) => log.exercise_id)),
+    [activeSession]
+  );
+
+  // What the in-progress workout view shows: the routine's exercises minus
+  // the ones already logged this session, so a set recorded once drops off
+  // the list instead of sitting there inviting a duplicate log.
+  const sessionExercises = useMemo(
+    () => displayExercises.filter((ex) => !loggedExerciseIds.has(ex.id)),
+    [displayExercises, loggedExerciseIds]
+  );
+
   // Catalog exercises available to add: same type as the tab, not already a
   // member of this routine (adding an existing member would just be editing
   // its target, which the card's own EDIT action already covers).
@@ -326,6 +343,7 @@ export function useTrainScreen() {
     setActiveRoutineId,
     activeRoutine,
     exercises: displayExercises,
+    sessionExercises,
     isLoading: isLoading || isLoadingRoutineDetail,
     hasRoutines,
     catalogOptionsForAdd,

@@ -24,6 +24,7 @@ export default function TrainScreen() {
     activeRoutineId,
     setActiveRoutineId,
     exercises,
+    sessionExercises,
     isLoading,
     hasRoutines,
     catalogOptionsForAdd,
@@ -78,7 +79,7 @@ export default function TrainScreen() {
       <View style={styles.container}>
         <WorkoutSessionView
           routineName={activeRoutineName}
-          exercises={exercises}
+          exercises={sessionExercises}
           activeSummary={activeSummary}
           isFinishing={isFinishingSession}
           onFinish={handleFinishWorkout}
