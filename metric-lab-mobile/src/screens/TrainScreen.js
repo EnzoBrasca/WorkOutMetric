@@ -29,9 +29,7 @@ export default function TrainScreen() {
     catalogOptionsForAdd,
 
     modalVisible,
-    editingExercise,
     handleOpenAdd,
-    handleOpenEdit,
     handleCloseModal,
     handleSave,
     handleRemoveFromRoutine,
@@ -98,8 +96,6 @@ export default function TrainScreen() {
           exercise={sessionExercise}
           onSetOneRm={handleSetOneRm}
           isSettingOneRm={isSettingOneRm}
-          restTimer={restTimer}
-          restDurationSec={restTimerSeconds}
         />
       </View>
     );
@@ -158,9 +154,7 @@ export default function TrainScreen() {
                     <ExerciseCard
                       key={ex.id}
                       exercise={ex}
-                      onEdit={handleOpenEdit}
                       onDelete={handleRemoveFromRoutine}
-                      onStart={handleOpenSession}
                       onSetOneRm={handleSetOneRm}
                       isSettingOneRm={isSettingOneRm}
                       onSetTargetOverride={handleSetTargetOverride}
@@ -187,21 +181,13 @@ export default function TrainScreen() {
         visible={modalVisible}
         onClose={handleCloseModal}
         onSave={handleSave}
-        initialData={editingExercise}
         catalogOptions={catalogOptionsForAdd}
         isSaving={isSavingRoutine}
       />
 
-      <SessionModal
-        visible={sessionModalVisible}
-        onClose={handleCloseSessionModal}
-        onSave={handleSaveSession}
-        exercise={sessionExercise}
-        onSetOneRm={handleSetOneRm}
-        isSettingOneRm={isSettingOneRm}
-        restTimer={restTimer}
-        restDurationSec={restTimerSeconds}
-      />
+      {/* No SessionModal here on purpose. Nothing in this branch opens one any
+          more: logging is offered only by the session view above, so a modal
+          here could never become visible. */}
 
       <MesocyclePickerModal
         visible={mesocyclePickerVisible}

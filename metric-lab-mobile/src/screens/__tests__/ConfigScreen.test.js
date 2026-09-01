@@ -33,6 +33,9 @@ function baseHookReturn(overrides = {}) {
     handleChangeNewExerciseName: () => {},
     handleCreateExercise: () => {},
 
+    exerciseSuggestions: [],
+    handleSelectSuggestion: () => {},
+
     editingId: null,
     renameValue: '',
     handleChangeRenameValue: () => {},

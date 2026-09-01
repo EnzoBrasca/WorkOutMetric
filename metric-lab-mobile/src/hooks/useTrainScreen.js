@@ -213,7 +213,6 @@ export function useTrainScreen() {
   );
 
   const [modalVisible, setModalVisible] = useState(false);
-  const [editingExercise, setEditingExercise] = useState(null);
 
   const [sessionModalVisible, setSessionModalVisible] = useState(false);
   const [sessionExerciseId, setSessionExerciseId] = useState(null);
@@ -230,26 +229,14 @@ export function useTrainScreen() {
   // on ConfigScreen.
   const [mesocyclePickerVisible, setMesocyclePickerVisible] = useState(false);
 
-  const handleOpenAdd = () => {
-    setEditingExercise(null);
-    setModalVisible(true);
-  };
-
-  const handleOpenEdit = (exercise) => {
-    setEditingExercise({
-      exerciseId: exercise.id,
-      name: exercise.name,
-      targetSets: exercise.targetSets,
-      targetReps: exercise.targetReps,
-    });
-    setModalVisible(true);
-  };
+  const handleOpenAdd = () => setModalVisible(true);
 
   const handleCloseModal = () => setModalVisible(false);
 
-  // Both add and edit collapse to the same call: setRoutineExercises upserts
-  // on (routine_id, exercise_id), so "add" and "change this exercise's
-  // target" are the same request, just with a different starting point.
+  // Adding only. Changing an exercise's target sets/reps lives on the Routines
+  // tab, where the rest of the routine is administered — the card here used to
+  // offer an EDIT button for it, which was unreachable during a workout and
+  // crashed when tapped there.
   const handleSave = async ({ exerciseId, targetSets, targetReps }) => {
     // Routines are created explicitly on the Routines tab now, so there is
     // nothing to create on demand here — without a selected routine there is
@@ -344,9 +331,7 @@ export function useTrainScreen() {
     catalogOptionsForAdd,
 
     modalVisible,
-    editingExercise,
     handleOpenAdd,
-    handleOpenEdit,
     handleCloseModal,
     handleSave,
     handleRemoveFromRoutine,

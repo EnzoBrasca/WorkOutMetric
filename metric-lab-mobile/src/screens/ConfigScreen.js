@@ -6,6 +6,7 @@ import { useConfigScreen } from '../hooks/useConfigScreen';
 import AsyncState, { shouldRenderState } from '../components/molecules/AsyncState';
 import Button from '../components/atoms/Button';
 import MesocycleModal from '../components/organisms/MesocycleModal';
+import ExerciseSuggestions from '../components/molecules/ExerciseSuggestions';
 import { EQUIPMENT_OPTIONS, equipmentWeightLabel } from '../utils/equipment';
 
 function typeLabel(t, type) {
@@ -33,6 +34,8 @@ export default function ConfigScreen() {
     createError,
     isCreatingExercise,
     handleChangeNewExerciseName,
+    exerciseSuggestions,
+    handleSelectSuggestion,
     handleCreateExercise,
 
     newExerciseEquipment,
@@ -188,6 +191,10 @@ export default function ConfigScreen() {
                 maxLength={40}
               />
               {createError ? <Text style={styles.fieldError}>{t(createError)}</Text> : null}
+              <ExerciseSuggestions
+                suggestions={exerciseSuggestions}
+                onSelect={handleSelectSuggestion}
+              />
             </View>
 
             <View style={styles.inputGroup}>
@@ -243,6 +250,10 @@ export default function ConfigScreen() {
               variant="primary"
               loading={isCreatingExercise}
             />
+
+            {/* Required by the illustrations' CC BY-SA 4.0 licence. It sits
+                here because this is where they first appear in the app. */}
+            <Text style={styles.guideAttribution}>{t('GUIDE_ATTRIBUTION')}</Text>
           </View>
 
           {shouldRenderState(catalogState) ? (
@@ -662,5 +673,12 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: 12,
     color: colors.danger,
+  },
+  guideAttribution: {
+    fontFamily: fonts.regular,
+    fontSize: 10,
+    lineHeight: 14,
+    color: colors.textSecondary,
+    marginTop: 12,
   },
 });

@@ -22,12 +22,43 @@ import Button from '../atoms/Button';
 export const ROUTINE_TYPE_SUGGESTIONS = ['PUSH', 'PULL', 'LEGS', 'ARMS', 'ABS'];
 export const CUSTOM_TYPE = '__custom__';
 
-export function validateRoutineForm(name) {
+// The routine's baseline sets and reps, used when no mesocycle is driving the
+// numbers. Defaults match the API's own (services/routinesService), so an
+// exercise added without touching these lands on the same 3x8 either way.
+export const DEFAULT_TARGET_SETS = '3';
+export const DEFAULT_TARGET_REPS = '8';
+
+/**
+ * A target is only meaningful for an exercise that is actually in the routine,
+ * so unselected rows are not validated — their inputs are not even rendered,
+ * and holding a stale invalid value against the user would block a save on a
+ * field they cannot see.
+ */
+export function validateRoutineForm(name, selectedIds = [], targetsById = {}) {
   const errors = {};
+
   if (!String(name ?? '').trim()) {
     errors.name = 'VALIDATION_REQUIRED';
   }
+
+  const badTargets = selectedIds.filter((id) => {
+    const target = targetsById[id];
+    return !isPositiveInteger(target?.sets) || !isPositiveInteger(target?.reps);
+  });
+
+  if (badTargets.length > 0) {
+    errors.targets = 'VALIDATION_POSITIVE';
+    errors.targetIds = badTargets;
+  }
+
   return errors;
+}
+
+function isPositiveInteger(value) {
+  const text = String(value ?? '').trim();
+  if (!text) return false;
+  const parsed = Number(text);
+  return Number.isInteger(parsed) && parsed > 0;
 }
 
 export default function RoutineFormModal({
@@ -50,6 +81,10 @@ export default function RoutineFormModal({
   const [customType, setCustomType] = useState('');
   const [description, setDescription] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
+  // Kept for every exercise the user has touched, not just the selected ones,
+  // so unticking a row and putting it back does not silently reset the numbers
+  // they had just typed.
+  const [targetsById, setTargetsById] = useState({});
   const [touched, setTouched] = useState(false);
 
   useEffect(() => {
@@ -65,18 +100,38 @@ export default function RoutineFormModal({
     setCustomType(isSuggested ? '' : initialType);
     setDescription(initialData?.description ?? '');
     setSelectedIds(initialData?.exerciseIds ?? []);
+    setTargetsById(initialData?.exerciseTargets ?? {});
     setTouched(false);
   }, [visible, initialData, isEditMode]);
 
-  const errors = validateRoutineForm(name);
+  const errors = validateRoutineForm(name, selectedIds, targetsById);
   const hasErrors = Object.keys(errors).length > 0;
 
+  // Selecting an exercise for the first time seeds the routine's baseline, so
+  // the inputs are never empty and a user who does not care about the numbers
+  // can just tick the box and save.
   const toggleExercise = (exerciseId) => {
     setSelectedIds((previous) =>
       previous.includes(exerciseId)
         ? previous.filter((id) => id !== exerciseId)
         : [...previous, exerciseId]
     );
+
+    setTargetsById((previous) =>
+      previous[exerciseId]
+        ? previous
+        : {
+            ...previous,
+            [exerciseId]: { sets: DEFAULT_TARGET_SETS, reps: DEFAULT_TARGET_REPS },
+          }
+    );
+  };
+
+  const setTarget = (exerciseId, field, value) => {
+    setTargetsById((previous) => ({
+      ...previous,
+      [exerciseId]: { ...previous[exerciseId], [field]: value },
+    }));
   };
 
   const handleSave = async () => {
@@ -88,6 +143,18 @@ export default function RoutineFormModal({
       type: (typeChoice === CUSTOM_TYPE ? customType : typeChoice).trim(),
       description: description.trim(),
       exerciseIds: selectedIds,
+      // Numbers, not the input's text, and scoped to what is actually in the
+      // routine — a target left behind by an unticked exercise is not part of
+      // this routine and must not be sent.
+      exerciseTargets: Object.fromEntries(
+        selectedIds.map((id) => [
+          id,
+          {
+            sets: parseInt(targetsById[id]?.sets, 10),
+            reps: parseInt(targetsById[id]?.reps, 10),
+          },
+        ])
+      ),
     });
 
     if (result?.success !== false) {
@@ -171,6 +238,7 @@ export default function RoutineFormModal({
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>{t('ROUTINE_EXERCISES')}</Text>
+              <Text style={styles.targetHint}>{t('ROUTINE_TARGETS_HINT')}</Text>
               {/* Deliberately NOT filtered by exercise.type: an exercise gets
                   its type BY being added to a routine, so filtering here would
                   hide every unassigned exercise and every one being moved to a
@@ -181,26 +249,64 @@ export default function RoutineFormModal({
                 <View style={styles.exerciseList}>
                   {catalogOptions.map((exercise) => {
                     const isSelected = selectedIds.includes(exercise.id);
+                    const target = targetsById[exercise.id] ?? {};
+
                     return (
-                      <TouchableOpacity
+                      // A View, not a TouchableOpacity: the target inputs live
+                      // inside this row, and a tap meant for a text field must
+                      // not untick the exercise underneath it.
+                      <View
                         key={exercise.id}
                         style={[styles.exerciseRow, isSelected && styles.exerciseRowSelected]}
-                        onPress={() => toggleExercise(exercise.id)}
-                        activeOpacity={0.8}
                       >
-                        <Text style={styles.checkbox}>{isSelected ? '[X]' : '[ ]'}</Text>
-                        <Text
-                          style={[styles.exerciseName, isSelected && styles.exerciseNameSelected]}
-                          numberOfLines={1}
-                          ellipsizeMode="tail"
+                        <TouchableOpacity
+                          style={styles.exerciseToggle}
+                          onPress={() => toggleExercise(exercise.id)}
+                          activeOpacity={0.8}
                         >
-                          {exercise.name}
-                        </Text>
-                      </TouchableOpacity>
+                          <Text style={styles.checkbox}>{isSelected ? '[X]' : '[ ]'}</Text>
+                          <Text
+                            style={[styles.exerciseName, isSelected && styles.exerciseNameSelected]}
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                          >
+                            {exercise.name}
+                          </Text>
+                        </TouchableOpacity>
+
+                        {isSelected ? (
+                          <View style={styles.targetGroup}>
+                            <TextInput
+                              testID={`routine-target-sets-${exercise.id}`}
+                              style={styles.targetInput}
+                              value={String(target.sets ?? '')}
+                              onChangeText={(value) => setTarget(exercise.id, 'sets', value)}
+                              keyboardType="numeric"
+                              maxLength={2}
+                              accessibilityLabel={t('TARGET_SETS_LABEL')}
+                            />
+                            <Text style={styles.targetSeparator}>x</Text>
+                            <TextInput
+                              testID={`routine-target-reps-${exercise.id}`}
+                              style={styles.targetInput}
+                              value={String(target.reps ?? '')}
+                              onChangeText={(value) => setTarget(exercise.id, 'reps', value)}
+                              keyboardType="numeric"
+                              maxLength={3}
+                              accessibilityLabel={t('TARGET_REPS_LABEL')}
+                            />
+                          </View>
+                        ) : null}
+                      </View>
                     );
                   })}
                 </View>
               )}
+              {fieldError('targets') ? (
+                <Text testID="routine-targets-error" style={styles.fieldError}>
+                  {fieldError('targets')}
+                </Text>
+              ) : null}
             </View>
 
             <View style={[styles.buttonRow, { marginBottom: insets.bottom + 16 }]}>
@@ -294,6 +400,44 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: 12,
     paddingVertical: 8,
+  },
+  // The tap target for membership. It takes the leftover width so the name
+  // stays tappable along its whole length, with the targets pinned right.
+  exerciseToggle: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minHeight: 44,
+  },
+  targetGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 0,
+  },
+  targetInput: {
+    fontFamily: fonts.medium,
+    fontSize: 14,
+    color: colors.textPrimary,
+    borderWidth: 1,
+    borderColor: colors.borderAlt,
+    backgroundColor: colors.background,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    minWidth: 40,
+    textAlign: 'center',
+  },
+  targetSeparator: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  targetHint: {
+    fontFamily: fonts.regular,
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginBottom: 8,
   },
   exerciseRowSelected: {
     backgroundColor: colors.background,

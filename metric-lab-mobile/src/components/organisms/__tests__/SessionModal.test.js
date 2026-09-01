@@ -25,13 +25,32 @@ describe('SessionModal', () => {
         exercise={exercise}
         onSetOneRm={() => {}}
         isSettingOneRm={false}
-        restTimer={null}
-        restDurationSec={90}
       />
     );
     const title = screen.getByText(`LOG SESSION: ${exercise.name}`);
     expect(title.props.numberOfLines).toBe(1);
     expect(title.props.ellipsizeMode).toBe('tail');
+  });
+
+  // Rest belongs to the workout, not to one exercise's numbers. This modal used
+  // to repeat the countdown that WorkoutSessionView already shows behind it —
+  // both driven by the same useRestTimer instance, so it was one timer drawn
+  // twice rather than a second one.
+  it('does not offer a rest timer of its own', async () => {
+    await render(
+      <SessionModal
+        visible
+        onClose={() => {}}
+        onSave={() => {}}
+        exercise={exercise}
+        onSetOneRm={() => {}}
+        isSettingOneRm={false}
+      />
+    );
+
+    // The literal strings RestTimer renders, so this fails if it comes back.
+    expect(screen.queryByText('REST TIMER')).toBeNull();
+    expect(screen.queryByText('START REST')).toBeNull();
   });
 
   // exercise.hasOverride/effectiveTargetSets/effectiveTargetReps are set by
@@ -55,8 +74,6 @@ describe('SessionModal', () => {
         exercise={overriddenExercise}
         onSetOneRm={() => {}}
         isSettingOneRm={false}
-        restTimer={null}
-        restDurationSec={90}
       />
     );
 
@@ -81,8 +98,6 @@ describe('SessionModal', () => {
         exercise={planOnlyExercise}
         onSetOneRm={() => {}}
         isSettingOneRm={false}
-        restTimer={null}
-        restDurationSec={90}
       />
     );
 

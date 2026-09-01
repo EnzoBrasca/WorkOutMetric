@@ -4,6 +4,7 @@ import { useConfigStore } from '../store/useConfigStore';
 import { useMesocycleStore } from '../store/useMesocycleStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { EQUIPMENT, normalizeUnits, splitsAcrossUnits } from '../utils/equipment';
+import { suggestExercises } from '../utils/exerciseGuide';
 
 // Mirrors the backend's own rule (services/exercisesService.setOneRm) so a bad
 // set is rejected before it ever reaches the network: weight must be a
@@ -163,6 +164,36 @@ export function useConfigScreen() {
   // existed, so an untouched picker changes nothing about the weight shown.
   const [newExerciseEquipment, setNewExerciseEquipment] = useState(EQUIPMENT.BARBELL);
   const [newExerciseUnits, setNewExerciseUnits] = useState(1);
+  // The illustrated movement the typed name was matched to, or null. Only set
+  // by tapping a suggestion — never inferred from the text, because a name that
+  // merely resembles a catalog entry is not a claim that it IS that movement.
+  const [newExerciseGuideSlug, setNewExerciseGuideSlug] = useState(null);
+
+  // Recomputed per keystroke rather than stored: searching 302 entries is
+  // cheaper than keeping a second copy of the list in sync with the input.
+  const exerciseSuggestions = useMemo(
+    () => (newExerciseGuideSlug ? [] : suggestExercises(newExerciseName)),
+    [newExerciseName, newExerciseGuideSlug]
+  );
+
+  // Editing the name after a match invalidates it: the slug would otherwise
+  // outlive the text it was chosen for, illustrating a movement the name no
+  // longer describes.
+  const handleChangeNewExerciseName = (name) => {
+    setNewExerciseName(name);
+    setNewExerciseGuideSlug(null);
+  };
+
+  // Taking a suggestion fills in what the catalog knows, so the user is not
+  // asked again for facts the movement already carries. Equipment stays
+  // editable afterwards — the catalog files smith machine work as a generic
+  // machine, so its guess is not always the one the user wants.
+  const handleSelectSuggestion = (suggestion) => {
+    setNewExerciseName(suggestion.name);
+    setNewExerciseGuideSlug(suggestion.slug);
+    setNewExerciseEquipment(suggestion.appEquipment);
+    setNewExerciseUnits((units) => normalizeUnits(suggestion.appEquipment, units));
+  };
 
   // Switching to equipment that cannot be split has to drop a previously
   // chosen "two", or a barbell would carry a unit count the picker no longer
@@ -181,13 +212,15 @@ export function useConfigScreen() {
       newExerciseName,
       null,
       newExerciseEquipment,
-      newExerciseUnits
+      newExerciseUnits,
+      newExerciseGuideSlug
     );
     if (result.success) {
       setNewExerciseName('');
       setCreateError(null);
       setNewExerciseEquipment(EQUIPMENT.BARBELL);
       setNewExerciseUnits(1);
+      setNewExerciseGuideSlug(null);
       // The store appends new exercises, so with the catalog paged the card the
       // user just created lands past the last visible one and the screen looks
       // like nothing happened. Reveal far enough to show it.
@@ -273,8 +306,11 @@ export function useConfigScreen() {
     newExerciseName,
     createError,
     isCreatingExercise,
-    handleChangeNewExerciseName: setNewExerciseName,
+    handleChangeNewExerciseName,
     handleCreateExercise,
+
+    exerciseSuggestions,
+    handleSelectSuggestion,
 
     newExerciseEquipment,
     newExerciseUnits,

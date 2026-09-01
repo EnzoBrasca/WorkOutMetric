@@ -92,6 +92,12 @@ describe('RoutineFormModal', () => {
       type: 'PUSH',
       description: 'Pecho y espalda',
       exerciseIds: ['ex-1', 'ex-3'],
+      // Seeded on selection, so ticking a box and saving is enough — the user
+      // never has to fill these in to create a routine.
+      exerciseTargets: {
+        'ex-1': { sets: 3, reps: 8 },
+        'ex-3': { sets: 3, reps: 8 },
+      },
     });
   });
 
@@ -193,5 +199,102 @@ describe('RoutineFormModal', () => {
     await renderModal();
 
     expect(screen.getByTestId('routine-name-input').props.maxLength).toBe(40);
+  });
+});
+
+// Editing an exercise's target sets/reps used to live on a button on the Train
+// card, which was unreachable during a workout and crashed when tapped. It
+// belongs here, where the rest of the routine is administered.
+describe('RoutineFormModal target sets and reps', () => {
+  it('shows the target inputs only for exercises that are in the routine', async () => {
+    await renderModal();
+
+    expect(screen.queryByTestId('routine-target-sets-ex-1')).toBeNull();
+
+    await interact(() => fireEvent.press(screen.getByText('Bench Press')));
+
+    expect(screen.getByTestId('routine-target-sets-ex-1')).toBeTruthy();
+    expect(screen.getByTestId('routine-target-reps-ex-1')).toBeTruthy();
+    // Untouched rows stay bare.
+    expect(screen.queryByTestId('routine-target-sets-ex-3')).toBeNull();
+  });
+
+  it('seeds the routine baseline so ticking a box is enough to save', async () => {
+    await renderModal();
+
+    await interact(() => fireEvent.press(screen.getByText('Bench Press')));
+
+    expect(screen.getByTestId('routine-target-sets-ex-1').props.value).toBe('3');
+    expect(screen.getByTestId('routine-target-reps-ex-1').props.value).toBe('8');
+  });
+
+  it('saves the numbers the user typed', async () => {
+    const onSave = jest.fn(() => ({ success: true }));
+    await renderModal({ onSave });
+
+    await interact(() =>
+      fireEvent.changeText(screen.getByTestId('routine-name-input'), 'Torso')
+    );
+    await interact(() => fireEvent.press(screen.getByText('Bench Press')));
+    await interact(() =>
+      fireEvent.changeText(screen.getByTestId('routine-target-sets-ex-1'), '5')
+    );
+    await interact(() =>
+      fireEvent.changeText(screen.getByTestId('routine-target-reps-ex-1'), '5')
+    );
+    await interact(() => fireEvent.press(screen.getByText('SAVE')));
+
+    // Numbers, not the input's text — the API takes integers.
+    expect(onSave.mock.calls[0][0].exerciseTargets).toEqual({
+      'ex-1': { sets: 5, reps: 5 },
+    });
+  });
+
+  it('prefills the targets a routine already has', async () => {
+    await renderModal({
+      initialData: {
+        name: 'Torso',
+        type: 'PUSH',
+        description: '',
+        exerciseIds: ['ex-1'],
+        exerciseTargets: { 'ex-1': { sets: 4, reps: 6 } },
+      },
+    });
+
+    expect(screen.getByTestId('routine-target-sets-ex-1').props.value).toBe('4');
+    expect(screen.getByTestId('routine-target-reps-ex-1').props.value).toBe('6');
+  });
+
+  it('refuses to save a target that is not a positive whole number', async () => {
+    const onSave = jest.fn(() => ({ success: true }));
+    await renderModal({ onSave });
+
+    await interact(() =>
+      fireEvent.changeText(screen.getByTestId('routine-name-input'), 'Torso')
+    );
+    await interact(() => fireEvent.press(screen.getByText('Bench Press')));
+    await interact(() =>
+      fireEvent.changeText(screen.getByTestId('routine-target-sets-ex-1'), '0')
+    );
+    await interact(() => fireEvent.press(screen.getByText('SAVE')));
+
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByTestId('routine-targets-error')).toBeTruthy();
+  });
+
+  // A target left behind by an unticked exercise is not part of the routine,
+  // and sending it would re-add the exercise the user just removed.
+  it('does not send targets for an exercise that was unticked', async () => {
+    const onSave = jest.fn(() => ({ success: true }));
+    await renderModal({ onSave });
+
+    await interact(() =>
+      fireEvent.changeText(screen.getByTestId('routine-name-input'), 'Torso')
+    );
+    await interact(() => fireEvent.press(screen.getByText('Bench Press')));
+    await interact(() => fireEvent.press(screen.getByText('Bench Press')));
+    await interact(() => fireEvent.press(screen.getByText('SAVE')));
+
+    expect(onSave.mock.calls[0][0].exerciseTargets).toEqual({});
   });
 });

@@ -5,8 +5,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/useTheme';
 import Button from '../atoms/Button';
 import OneRmPrompt from '../molecules/OneRmPrompt';
-import RestTimer from '../molecules/RestTimer';
+import ExerciseGuideImage from '../atoms/ExerciseGuideImage';
 
+// Logging only. The rest timer used to be repeated here, but it is a property
+// of the workout, not of one exercise's numbers: WorkoutSessionView owns the
+// control, and both were views of the same useRestTimer instance, so this one
+// only ever duplicated a countdown already on screen behind the modal.
 export default function SessionModal({
   visible,
   onClose,
@@ -14,8 +18,6 @@ export default function SessionModal({
   exercise,
   onSetOneRm,
   isSettingOneRm,
-  restTimer,
-  restDurationSec,
 }) {
   const t = useTranslation();
   const { colors, fonts } = useTheme();
@@ -82,7 +84,10 @@ export default function SessionModal({
       >
         <View style={styles.modalContent}>
           <ScrollView keyboardShouldPersistTaps="handled">
-          <Text style={styles.modalTitle} numberOfLines={1} ellipsizeMode="tail">LOG SESSION: {exercise.name}</Text>
+          <View style={styles.titleRow}>
+            <ExerciseGuideImage slug={exercise.guide_slug} size={48} />
+            <Text style={styles.modalTitle} numberOfLines={1} ellipsizeMode="tail">LOG SESSION: {exercise.name}</Text>
+          </View>
 
           <View style={styles.targetBox}>
             {planTarget ? (
@@ -130,18 +135,6 @@ export default function SessionModal({
             </View>
           </View>
 
-          {restTimer && (
-            <View style={styles.restTimerBox}>
-              <RestTimer
-                remainingSec={restTimer.remainingSec}
-                isRunning={restTimer.isRunning}
-                durationSec={restDurationSec}
-                onStart={() => restTimer.start()}
-                onStop={restTimer.stop}
-              />
-            </View>
-          )}
-
           <View style={[styles.buttonRow, { marginBottom: insets.bottom + 16 }]}>
             <Button label={t("CANCEL")} onPress={onClose} variant="secondary" style={styles.flexBtn} />
             <Button label={t("FINISH_AND_LOG")} onPress={handleSave} variant="primary" style={styles.flexBtn} />
@@ -166,12 +159,20 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     borderColor: colors.border,
     maxHeight: '85%',
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
   modalTitle: {
     fontFamily: fonts.semiBold,
     fontSize: 20,
     color: colors.primary,
-    marginBottom: 16,
     letterSpacing: 1,
+    // The spacing below now belongs to the row, so the title stays vertically
+    // centred against the illustration beside it.
+    flexShrink: 1,
   },
   targetBox: {
     backgroundColor: colors.backgroundCard,
@@ -237,12 +238,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
   progressFill: {
     height: '100%',
     backgroundColor: colors.primary,
-  },
-  restTimerBox: {
-    backgroundColor: colors.backgroundCard,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
   },
   buttonRow: {
     flexDirection: 'row',

@@ -271,7 +271,13 @@ export const useMesocycleStore = create(
        * of 0) and the failure is reported, rather than hiding a row the user
        * would then create a duplicate of.
        */
-      createRoutine: async ({ name, type, description, exerciseIds = [] } = {}) => {
+      createRoutine: async ({
+        name,
+        type,
+        description,
+        exerciseIds = [],
+        exerciseTargets = {},
+      } = {}) => {
         set({ isSavingRoutine: true, error: null });
         try {
           const payload = { name };
@@ -286,7 +292,17 @@ export const useMesocycleStore = create(
           if (exerciseIds.length > 0) {
             await routinesApi.setRoutineExercises(
               routine.id,
-              exerciseIds.map((exerciseId) => ({ exercise_id: exerciseId }))
+              exerciseIds.map((exerciseId) => ({
+                exercise_id: exerciseId,
+                // Same shape as syncRoutineExercises: omitted when unknown so
+                // the API's own default applies.
+                ...(exerciseTargets[exerciseId]?.sets
+                  ? { target_sets: exerciseTargets[exerciseId].sets }
+                  : {}),
+                ...(exerciseTargets[exerciseId]?.reps
+                  ? { target_reps: exerciseTargets[exerciseId].reps }
+                  : {}),
+              }))
             );
             set((state) => ({
               routines: state.routines.map((r) =>
@@ -372,18 +388,36 @@ export const useMesocycleStore = create(
        * the deselected ones are deleted, so an untouched exercise keeps the
        * target sets/reps it was already given.
        */
-      syncRoutineExercises: async (routineId, selectedIds = [], currentIds = []) => {
-        const current = new Set(currentIds);
+      syncRoutineExercises: async (
+        routineId,
+        selectedIds = [],
+        currentIds = [],
+        targetsById = {}
+      ) => {
         const selected = new Set(selectedIds);
-        const toAdd = selectedIds.filter((id) => !current.has(id));
         const toRemove = currentIds.filter((id) => !selected.has(id));
 
         set({ isSavingRoutine: true, error: null });
         try {
-          if (toAdd.length > 0) {
+          // Every selected exercise, not just the newly added ones: the endpoint
+          // upserts on (routine_id, exercise_id), so one call covers both
+          // joining an exercise and changing the sets/reps of one already in
+          // the routine. Sending only additions would silently drop a retyped
+          // target on an exercise whose membership did not change.
+          if (selectedIds.length > 0) {
             await routinesApi.setRoutineExercises(
               routineId,
-              toAdd.map((exerciseId) => ({ exercise_id: exerciseId }))
+              selectedIds.map((exerciseId) => ({
+                exercise_id: exerciseId,
+                // Omitted rather than sent as undefined when unknown, so the
+                // API applies its own 3x8 default instead of rejecting a null.
+                ...(targetsById[exerciseId]?.sets
+                  ? { target_sets: targetsById[exerciseId].sets }
+                  : {}),
+                ...(targetsById[exerciseId]?.reps
+                  ? { target_reps: targetsById[exerciseId].reps }
+                  : {}),
+              }))
             );
           }
 

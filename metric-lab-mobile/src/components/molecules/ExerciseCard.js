@@ -5,6 +5,7 @@ import { useTheme } from '../../theme/useTheme';
 import OneRmPrompt from './OneRmPrompt';
 import TargetOverrideEditor from './TargetOverrideEditor';
 import { equipmentWeightLabel } from '../../utils/equipment';
+import ExerciseGuideImage from '../atoms/ExerciseGuideImage';
 
 // exercise.planTarget is attached by useTrainScreen when an active mesocycle
 // covers this exercise (see useMesocycleStore's plan). When it's absent this
@@ -16,11 +17,17 @@ import { equipmentWeightLabel } from '../../utils/equipment';
 // adjustment on top of planTarget/the routine's own target. Editing is only
 // offered with an active mesocycle (editable), since an override is scoped to
 // (mesocycleId, week) and has nothing to scope to otherwise.
+// onLog opens the logging modal for this exercise. It used to be called
+// onStart and read "START", which described nothing it did — starting a workout
+// is the screen's own button, and this only ever recorded sets and reps.
+//
+// Both onLog and onDelete are optional, and each button appears only when its
+// handler does. The two views that render this card offer different things:
+// during a workout you log, outside one you edit the routine.
 export default function ExerciseCard({
   exercise,
-  onEdit,
   onDelete,
-  onStart,
+  onLog,
   onSetOneRm,
   isSettingOneRm,
   onSetTargetOverride,
@@ -35,21 +42,35 @@ export default function ExerciseCard({
     <View style={styles.exerciseCard}>
       <View style={styles.cardHeader}>
         <View style={styles.headerLeft}>
-          <Text style={styles.exerciseName} numberOfLines={2}>{exercise.name}</Text>
+          <View style={styles.nameRow}>
+            <ExerciseGuideImage slug={exercise.guide_slug} size={36} />
+            <Text style={styles.exerciseName} numberOfLines={2}>{exercise.name}</Text>
+          </View>
           <View style={styles.weekBadge}>
             <Text style={styles.weekText}>{exercise.week}</Text>
           </View>
         </View>
         <View style={styles.actions}>
-          <TouchableOpacity onPress={() => onStart(exercise)} style={styles.startBtn}>
-            <Text style={styles.startText}>{t("START")}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => onEdit(exercise)} style={styles.actionBtn}>
-            <Text style={styles.actionText}>{t("EDIT")}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => onDelete(exercise.id)} style={styles.actionBtn}>
-            <Text style={[styles.actionText, { color: colors.danger }]}>{t("DEL")}</Text>
-          </TouchableOpacity>
+          {/* Logging belongs to a workout, so only the session view passes
+              onLog. Offering it beforehand meant logSession auto-started a
+              session through ensureActiveSessionId and the screen flipped
+              into the workout view on save — a workout the user never asked
+              to begin. */}
+          {onLog ? (
+            <TouchableOpacity onPress={() => onLog(exercise)} style={styles.logBtn}>
+              <Text style={styles.logText}>{t("LOG")}</Text>
+            </TouchableOpacity>
+          ) : null}
+          {/* Only where the caller can actually act on it. The session view
+              renders this same card without onDelete, and an unconditional
+              button there threw "onDelete is not a function" on tap. Dropping
+              an exercise from the routine is setup, not training, so hiding it
+              mid-workout is the right behaviour as well as the safe one. */}
+          {onDelete ? (
+            <TouchableOpacity onPress={() => onDelete(exercise.id)} style={styles.actionBtn}>
+              <Text style={[styles.actionText, { color: colors.danger }]}>{t("DEL")}</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       </View>
       <View style={styles.cardBody}>
@@ -125,11 +146,20 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 16,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    // The illustration is fixed-width, so the name has to be the part that
+    // wraps rather than pushing the row past the card.
+    alignSelf: 'stretch',
+  },
   exerciseName: {
     fontFamily: fonts.semiBold,
     fontSize: 22,
     letterSpacing: 1.2,
     color: colors.primary,
+    flexShrink: 1,
   },
   weekBadge: {
     backgroundColor: colors.backgroundCard,
@@ -164,14 +194,14 @@ const getStyles = (colors, fonts) => StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
   },
-  startBtn: {
+  logBtn: {
     backgroundColor: colors.primary,
     paddingHorizontal: 10,
     minHeight: 44,
     justifyContent: 'center',
     marginRight: 4,
   },
-  startText: {
+  logText: {
     fontFamily: fonts.bold,
     fontSize: 14,
     color: colors.background,

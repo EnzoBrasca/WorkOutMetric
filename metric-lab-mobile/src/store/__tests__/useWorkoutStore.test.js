@@ -163,6 +163,57 @@ describe('useWorkoutStore.addExercise', () => {
   });
 });
 
+describe('useWorkoutStore.loadExercises guide backfill', () => {
+  // Exercises created before illustrations existed carry no guide_slug. Naming
+  // them is enough to identify most of them, so a returning user gets pictures
+  // without re-entering their catalog.
+  function mockLoad(exercises) {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ exercises }),
+    });
+  }
+
+  it('matches existing exercises by name and pushes the result back', async () => {
+    mockLoad([
+      { id: 'ex-1', name: 'Sentadilla', muscle_group: 'PUSH' },
+      { id: 'ex-2', name: 'Press de banca', muscle_group: 'PUSH' },
+    ]);
+
+    await useWorkoutStore.getState().loadExercises();
+
+    const loaded = useWorkoutStore.getState().exercises;
+    expect(loaded.map((ex) => ex.guide_slug)).toEqual(['squat', 'bench-press']);
+    // The match has to reach the server, or it is recomputed on every load and
+    // never visible to another device.
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/data/sync?user_id=user-1'),
+      expect.objectContaining({ method: 'POST' })
+    );
+  });
+
+  it('does not write when it recognised nothing', async () => {
+    mockLoad([{ id: 'ex-1', name: 'Mi invento', muscle_group: 'PUSH' }]);
+
+    await useWorkoutStore.getState().loadExercises();
+
+    expect(useWorkoutStore.getState().exercises[0].guide_slug).toBeUndefined();
+    expect(global.fetch).toHaveBeenCalledTimes(1); // the GET only
+  });
+
+  it('leaves a slug the user already chose untouched', async () => {
+    mockLoad([
+      { id: 'ex-1', name: 'Sentadilla', guide_slug: 'front-squat', muscle_group: 'PUSH' },
+    ]);
+
+    await useWorkoutStore.getState().loadExercises();
+
+    expect(useWorkoutStore.getState().exercises[0].guide_slug).toBe('front-squat');
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('useWorkoutStore.setActiveRoutineId', () => {
   it('stores the selected routine id', () => {
     useWorkoutStore.getState().setActiveRoutineId('routine-legs');

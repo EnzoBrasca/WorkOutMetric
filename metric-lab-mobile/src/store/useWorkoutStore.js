@@ -7,6 +7,7 @@ import { apiRequest } from '../api/client';
 import { useAuthStore } from './useAuthStore';
 import { useMesocycleStore } from './useMesocycleStore';
 import { useSessionStore } from './useSessionStore';
+import { backfillGuideSlugs } from '../utils/exerciseGuide';
 
 export const useWorkoutStore = create(
   persist(
@@ -40,7 +41,20 @@ export const useWorkoutStore = create(
             ...ex,
             type: ex.muscle_group?.toLowerCase() || 'push'
           }));
-          set({ exercises: loaded });
+
+          // Exercises created before illustrations existed carry no guide_slug.
+          // Match the ones whose names are unambiguous (see resolveGuideSlug —
+          // it returns null rather than guessing) so a returning user gets
+          // pictures without re-entering their catalog.
+          const withGuides = backfillGuideSlugs(loaded);
+          set({ exercises: withGuides });
+
+          // Only write when something actually resolved: backfillGuideSlugs
+          // returns the input array itself when it changed nothing, so this
+          // costs one identity check on every load instead of a sync.
+          if (withGuides !== loaded) {
+            get().syncExercises();
+          }
         } catch (error) {
           console.error('Failed to load exercises:', error);
           set({ error: error.message });

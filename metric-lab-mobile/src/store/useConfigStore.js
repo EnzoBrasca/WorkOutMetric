@@ -115,7 +115,7 @@ export const useConfigStore = create(
        * here in the same shape /data/stats would give a brand new exercise —
        * no reference 1RM, no history — so it shows up immediately.
        */
-      createExercise: async (name, type, equipment = null, equipmentUnits = 1) => {
+      createExercise: async (name, type, equipment = null, equipmentUnits = 1, guideSlug = null) => {
         const trimmed = String(name ?? '').trim();
         if (!trimmed) return { success: false, error: 'VALIDATION_REQUIRED' };
 
@@ -129,6 +129,7 @@ export const useConfigStore = create(
               sets: '0x0',
               equipment,
               equipment_units: normalizeUnits(equipment, equipmentUnits),
+              guide_slug: guideSlug,
             },
             type
           );

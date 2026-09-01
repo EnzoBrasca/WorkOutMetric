@@ -107,7 +107,7 @@ export default function WorkoutSessionView({
               <ExerciseCard
                 key={ex.id}
                 exercise={ex}
-                onStart={onOpenExercise}
+                onLog={onOpenExercise}
                 onSetOneRm={onSetOneRm}
                 isSettingOneRm={isSettingOneRm}
               />

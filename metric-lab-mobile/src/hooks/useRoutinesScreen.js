@@ -27,6 +27,22 @@ export function haveSameMembers(a = [], b = []) {
   return a.every((id) => inB.has(id));
 }
 
+/**
+ * Whether every exercise still carries the sets and reps it had.
+ *
+ * Checked separately from membership because the two now change independently:
+ * retyping 3x8 as 4x6 touches no membership at all, and without this a save
+ * that only changed the numbers would be skipped as a no-op.
+ *
+ * Only ids present in both are compared — anything added or removed is already
+ * a membership change, and comparing it here would double-report it.
+ */
+export function haveSameTargets(a = {}, b = {}) {
+  return Object.keys(a)
+    .filter((id) => id in b)
+    .every((id) => a[id]?.sets === b[id]?.sets && a[id]?.reps === b[id]?.reps);
+}
+
 export function useRoutinesScreen() {
   const {
     routines,
@@ -71,12 +87,23 @@ export function useRoutinesScreen() {
 
     if (!detail) return;
 
+    const memberships = detail.exercises ?? [];
+
     setEditingRoutine({
       id: routine.id,
       name: routine.name,
       type: routine.type,
       description: routine.description,
-      exerciseIds: (detail.exercises ?? []).map((membership) => membership.exercise_id),
+      exerciseIds: memberships.map((membership) => membership.exercise_id),
+      // Numbers, matching what the form emits, so haveSameTargets compares
+      // like with like and reopening a routine untouched still costs no
+      // requests.
+      exerciseTargets: Object.fromEntries(
+        memberships.map((membership) => [
+          membership.exercise_id,
+          { sets: membership.target_sets, reps: membership.target_reps },
+        ])
+      ),
     });
     setModalVisible(true);
   };
@@ -103,11 +130,18 @@ export function useRoutinesScreen() {
       if (!result.success) return result;
     }
 
-    if (!haveSameMembers(form.exerciseIds, editingRoutine.exerciseIds)) {
+    const membershipChanged = !haveSameMembers(form.exerciseIds, editingRoutine.exerciseIds);
+    const targetsChanged = !haveSameTargets(
+      form.exerciseTargets,
+      editingRoutine.exerciseTargets
+    );
+
+    if (membershipChanged || targetsChanged) {
       const result = await syncRoutineExercises(
         editingRoutine.id,
         form.exerciseIds,
-        editingRoutine.exerciseIds
+        editingRoutine.exerciseIds,
+        form.exerciseTargets
       );
       if (!result.success) return result;
     }

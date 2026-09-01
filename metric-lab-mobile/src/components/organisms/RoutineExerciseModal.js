@@ -7,14 +7,16 @@ import { useTheme } from '../../theme/useTheme';
 import Button from '../atoms/Button';
 
 // Train no longer types a free-text exercise name: it can only pick an
-// existing catalog exercise and join it to the active tab's routine. Editing
-// an already-joined exercise only ever changes its target sets/reps — the
-// exercise identity is fixed once it's in the routine, so the picker is
-// locked away in that case.
-export function validateRoutineExercise(exerciseId, targetSets, targetReps, isEditMode) {
+// existing catalog exercise and join it to the active tab's routine.
+//
+// Adding is all this does now. Changing an already-joined exercise's target
+// sets/reps moved to the Routines tab, where the routine's membership is
+// edited — this modal's old edit mode was reachable only from a card button
+// that crashed during a workout.
+export function validateRoutineExercise(exerciseId, targetSets, targetReps) {
   const errors = {};
 
-  if (!isEditMode && !exerciseId) {
+  if (!exerciseId) {
     errors.exercise = 'ERROR_EXERCISE_REQUIRED';
   }
 
@@ -43,7 +45,6 @@ export default function RoutineExerciseModal({
   visible,
   onClose,
   onSave,
-  initialData,
   catalogOptions = [],
   isSaving,
 }) {
@@ -52,29 +53,21 @@ export default function RoutineExerciseModal({
   const insets = useSafeAreaInsets();
   const styles = getStyles(colors, fonts);
 
-  const isEditMode = Boolean(initialData);
-
   const [exerciseId, setExerciseId] = useState('');
   const [targetSets, setTargetSets] = useState('3');
   const [targetReps, setTargetReps] = useState('8');
   const [touched, setTouched] = useState(false);
 
   useEffect(() => {
-    if (isEditMode) {
-      setExerciseId(initialData.exerciseId);
-      setTargetSets(String(initialData.targetSets ?? 3));
-      setTargetReps(String(initialData.targetReps ?? 8));
-    } else {
-      setExerciseId(catalogOptions[0]?.id || '');
-      setTargetSets('3');
-      setTargetReps('8');
-    }
+    setExerciseId(catalogOptions[0]?.id || '');
+    setTargetSets('3');
+    setTargetReps('8');
     setTouched(false);
-  }, [initialData, visible, catalogOptions, isEditMode]);
+  }, [visible, catalogOptions]);
 
-  const errors = validateRoutineExercise(exerciseId, targetSets, targetReps, isEditMode);
+  const errors = validateRoutineExercise(exerciseId, targetSets, targetReps);
   const hasErrors = Object.keys(errors).length > 0;
-  const catalogEmpty = !isEditMode && catalogOptions.length === 0;
+  const catalogEmpty = catalogOptions.length === 0;
 
   const handleSave = () => {
     setTouched(true);
@@ -98,7 +91,7 @@ export default function RoutineExerciseModal({
       >
         <View style={styles.modalContent}>
           <ScrollView keyboardShouldPersistTaps="handled">
-            <Text style={styles.modalTitle}>{isEditMode ? t("EDIT_TARGET") : t("ADD_TO_ROUTINE")}</Text>
+            <Text style={styles.modalTitle}>{t("ADD_TO_ROUTINE")}</Text>
 
             {catalogEmpty ? (
               <Text style={styles.warningText}>{t("NO_CATALOG_EXERCISES")}</Text>
@@ -106,23 +99,19 @@ export default function RoutineExerciseModal({
               <>
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>{t("SELECT_EXERCISE")}</Text>
-                  {isEditMode ? (
-                    <Text style={styles.lockedExerciseName}>{initialData.name}</Text>
-                  ) : (
-                    <View style={styles.pickerContainer}>
-                      <Picker
-                        selectedValue={exerciseId}
-                        onValueChange={setExerciseId}
-                        style={styles.picker}
-                        itemStyle={{ color: colors.textPrimary }}
-                        dropdownIconColor={colors.primary}
-                      >
-                        {catalogOptions.map((exercise) => (
-                          <Picker.Item key={exercise.id} label={exercise.name} value={exercise.id} />
-                        ))}
-                      </Picker>
-                    </View>
-                  )}
+                  <View style={styles.pickerContainer}>
+                    <Picker
+                      selectedValue={exerciseId}
+                      onValueChange={setExerciseId}
+                      style={styles.picker}
+                      itemStyle={{ color: colors.textPrimary }}
+                      dropdownIconColor={colors.primary}
+                    >
+                      {catalogOptions.map((exercise) => (
+                        <Picker.Item key={exercise.id} label={exercise.name} value={exercise.id} />
+                      ))}
+                    </Picker>
+                  </View>
                   {fieldError('exercise') ? (
                     <Text style={styles.fieldError}>{fieldError('exercise')}</Text>
                   ) : null}
@@ -216,15 +205,6 @@ const getStyles = (colors, fonts) => StyleSheet.create({
   input: {
     fontFamily: fonts.regular,
     fontSize: 16,
-    color: colors.textPrimary,
-    borderWidth: 1,
-    borderColor: colors.borderAlt,
-    backgroundColor: colors.background,
-    padding: 12,
-  },
-  lockedExerciseName: {
-    fontFamily: fonts.semiBold,
-    fontSize: 18,
     color: colors.textPrimary,
     borderWidth: 1,
     borderColor: colors.borderAlt,

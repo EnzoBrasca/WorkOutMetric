@@ -245,9 +245,13 @@ describe('useMesocycleStore.deleteRoutine', () => {
 });
 
 describe('useMesocycleStore.syncRoutineExercises', () => {
-  it('adds only the newly selected exercises and removes only the deselected ones', async () => {
+  // The POST upserts on (routine_id, exercise_id), so it carries every selected
+  // exercise rather than only the additions: an exercise whose membership did
+  // not change can still have had its target sets/reps retyped, and sending
+  // only the new ids would drop that edit on the floor.
+  it('upserts every selected exercise and removes only the deselected ones', async () => {
     global.fetch
-      .mockResolvedValueOnce(okResponse({ exercises: [] })) // POST batch add
+      .mockResolvedValueOnce(okResponse({ exercises: [] })) // POST batch upsert
       .mockResolvedValueOnce(okResponse({})) // DELETE ex-2
       .mockResolvedValueOnce(okResponse({ routine: { id: 'routine-push', exercises: [] } })); // GET detail
 
@@ -259,22 +263,62 @@ describe('useMesocycleStore.syncRoutineExercises', () => {
 
     const [addUrl, addOptions] = global.fetch.mock.calls[0];
     expect(addUrl).toContain('routine_id=routine-push');
-    expect(JSON.parse(addOptions.body).exercises.map((ex) => ex.exercise_id)).toEqual(['ex-3']);
+    expect(JSON.parse(addOptions.body).exercises.map((ex) => ex.exercise_id)).toEqual([
+      'ex-1',
+      'ex-3',
+    ]);
 
     const [removeUrl, removeOptions] = global.fetch.mock.calls[1];
     expect(removeUrl).toContain('exercise_id=ex-2');
     expect(removeOptions.method).toBe('DELETE');
   });
 
-  it('does nothing but re-read when the selection is unchanged', async () => {
-    global.fetch.mockResolvedValue(
-      okResponse({ routine: { id: 'routine-push', exercises: [] } })
-    );
+  it('sends the target sets and reps it was given', async () => {
+    global.fetch
+      .mockResolvedValueOnce(okResponse({ exercises: [] }))
+      .mockResolvedValueOnce(okResponse({ routine: { id: 'routine-push', exercises: [] } }));
+
+    await useMesocycleStore
+      .getState()
+      .syncRoutineExercises('routine-push', ['ex-1'], ['ex-1'], {
+        'ex-1': { sets: 5, reps: 5 },
+      });
+
+    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(body.exercises[0]).toEqual({
+      exercise_id: 'ex-1',
+      target_sets: 5,
+      target_reps: 5,
+    });
+  });
+
+  // Omitted, not null: the API applies its own 3x8 default for a missing
+  // target and rejects a null one.
+  it('omits the target keys entirely when it has no numbers', async () => {
+    global.fetch
+      .mockResolvedValueOnce(okResponse({ exercises: [] }))
+      .mockResolvedValueOnce(okResponse({ routine: { id: 'routine-push', exercises: [] } }));
+
+    await useMesocycleStore.getState().syncRoutineExercises('routine-push', ['ex-1'], []);
+
+    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(body.exercises[0]).toEqual({ exercise_id: 'ex-1' });
+  });
+
+  // Deciding that nothing changed is the caller's job now (useRoutinesScreen
+  // compares membership AND targets before calling at all), because the store
+  // can no longer tell an unchanged selection from one whose numbers were
+  // retyped. What it still must not do is issue a DELETE for an exercise that
+  // is staying.
+  it('deletes nothing when the selection is unchanged', async () => {
+    global.fetch
+      .mockResolvedValueOnce(okResponse({ exercises: [] }))
+      .mockResolvedValueOnce(okResponse({ routine: { id: 'routine-push', exercises: [] } }));
 
     await useMesocycleStore.getState().syncRoutineExercises('routine-push', ['ex-1'], ['ex-1']);
 
-    expect(global.fetch).toHaveBeenCalledTimes(1);
-    expect(global.fetch.mock.calls[0][1].method).toBe('GET');
+    const methods = global.fetch.mock.calls.map(([, options]) => options.method);
+    expect(methods).not.toContain('DELETE');
   });
 
   it('updates the exercise count on the routine card', async () => {

@@ -1,4 +1,4 @@
-import { buildRoutinePatch, haveSameMembers } from '../useRoutinesScreen';
+import { buildRoutinePatch, haveSameMembers, haveSameTargets } from '../useRoutinesScreen';
 
 // Editing a routine writes through two different endpoints (the routine's own
 // fields, and its membership). These decide what is worth sending — a PATCH
@@ -51,5 +51,41 @@ describe('haveSameMembers', () => {
 
   it('treats two empty lists as unchanged', () => {
     expect(haveSameMembers([], [])).toBe(true);
+  });
+});
+
+// Targets change independently of membership: retyping 3x8 as 4x6 touches no
+// membership at all, and without this check that save would be skipped.
+describe('haveSameTargets', () => {
+  it('spots a changed set count', () => {
+    expect(
+      haveSameTargets({ 'ex-1': { sets: 4, reps: 8 } }, { 'ex-1': { sets: 3, reps: 8 } })
+    ).toBe(false);
+  });
+
+  it('spots a changed rep count', () => {
+    expect(
+      haveSameTargets({ 'ex-1': { sets: 3, reps: 6 } }, { 'ex-1': { sets: 3, reps: 8 } })
+    ).toBe(false);
+  });
+
+  it('reports untouched targets as unchanged, so an idle save costs no request', () => {
+    expect(
+      haveSameTargets(
+        { 'ex-1': { sets: 3, reps: 8 }, 'ex-2': { sets: 4, reps: 6 } },
+        { 'ex-1': { sets: 3, reps: 8 }, 'ex-2': { sets: 4, reps: 6 } }
+      )
+    ).toBe(true);
+  });
+
+  // An added or removed exercise is already a membership change; counting it
+  // here too would just report the same edit twice.
+  it('ignores an exercise that only exists on one side', () => {
+    expect(haveSameTargets({ 'ex-9': { sets: 3, reps: 8 } }, {})).toBe(true);
+    expect(haveSameTargets({}, { 'ex-9': { sets: 3, reps: 8 } })).toBe(true);
+  });
+
+  it('treats two empty maps as unchanged', () => {
+    expect(haveSameTargets({}, {})).toBe(true);
   });
 });
