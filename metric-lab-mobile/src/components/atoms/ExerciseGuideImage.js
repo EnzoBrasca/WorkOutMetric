@@ -12,7 +12,15 @@ import { guideImageUrl } from '../../utils/exerciseGuide';
 // The image comes from a CDN, not the bundle (see utils/exerciseGuide). expo-image
 // caches it to disk on first view, so a movement seen once keeps rendering with
 // no connection — which is the state the app is usually in at a gym.
-export default function ExerciseGuideImage({ slug, size = 40, frameIndex = 1 }) {
+//
+// The artwork is PURE WHITE line art on transparency -- every opaque pixel in
+// every frame is #FFFFFF, covering about 5% of the canvas. Drawn as-is it is
+// invisible on any light surface, which is exactly what happened under the
+// light theme (backgroundCard is #f4f4f5 there) and under a custom theme with
+// a pale background. So it is tinted rather than drawn: because the source is
+// monochrome, recolouring loses nothing and lets one asset read correctly on
+// every background the user can pick.
+export default function ExerciseGuideImage({ slug, size = 40, frameIndex = 1, tintColor }) {
   const { colors } = useTheme();
   const url = guideImageUrl(slug, frameIndex);
   if (!url) return null;
@@ -24,8 +32,10 @@ export default function ExerciseGuideImage({ slug, size = 40, frameIndex = 1 }) 
       style={{
         width: size,
         height: size,
-        backgroundColor: colors.backgroundCard,
       }}
+      // Defaults to the body text colour so the illustration sits at the same
+      // visual weight as the name beside it, in whichever theme is active.
+      tintColor={tintColor ?? colors.textPrimary}
       contentFit="contain"
       // memory-disk rather than the default disk-only: these render inside a
       // scrolling list, where re-reading from disk on every row recycle is
